@@ -1,175 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { createAllTables } from "@/lib/create-tables";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-const CREATE_TABLES_SQL = `
-CREATE TABLE IF NOT EXISTS "Location" (
-  "id" TEXT NOT NULL, "name" TEXT NOT NULL, "code" TEXT, "type" TEXT NOT NULL DEFAULT 'warehouse',
-  "address" TEXT, "city" TEXT, "country" TEXT DEFAULT 'USA', "managerName" TEXT, "managerEmail" TEXT,
-  "phone" TEXT, "isActive" BOOLEAN NOT NULL DEFAULT true,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Location_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "User" (
-  "id" TEXT NOT NULL, "name" TEXT NOT NULL, "email" TEXT NOT NULL, "role" TEXT NOT NULL DEFAULT 'member',
-  "avatar" TEXT, "locationId" TEXT,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "User_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "Product" (
-  "id" TEXT NOT NULL, "sku" TEXT NOT NULL, "name" TEXT NOT NULL, "description" TEXT,
-  "category" TEXT NOT NULL, "brand" TEXT NOT NULL DEFAULT 'Cellgenic',
-  "unitPrice" DOUBLE PRECISION NOT NULL, "costPrice" DOUBLE PRECISION NOT NULL,
-  "imageUrl" TEXT, "katanaId" TEXT, "quickbooksId" TEXT, "isActive" BOOLEAN NOT NULL DEFAULT true,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "Inventory" (
-  "id" TEXT NOT NULL, "productId" TEXT NOT NULL, "location" TEXT NOT NULL DEFAULT 'Main Warehouse',
-  "quantity" INTEGER NOT NULL, "minimumThreshold" INTEGER NOT NULL DEFAULT 10,
-  "reorderPoint" INTEGER NOT NULL DEFAULT 20, "reorderQuantity" INTEGER NOT NULL DEFAULT 50,
-  "lastRestocked" TIMESTAMP(3),
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Inventory_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "ProductDocument" (
-  "id" TEXT NOT NULL, "productId" TEXT NOT NULL, "name" TEXT NOT NULL, "type" TEXT NOT NULL,
-  "fileUrl" TEXT NOT NULL, "fileSize" INTEGER, "uploadedBy" TEXT,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "ProductDocument_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "SaleRecord" (
-  "id" TEXT NOT NULL, "productId" TEXT NOT NULL, "quantity" INTEGER NOT NULL,
-  "unitPrice" DOUBLE PRECISION NOT NULL, "totalAmount" DOUBLE PRECISION NOT NULL,
-  "channel" TEXT NOT NULL DEFAULT 'direct', "customerName" TEXT,
-  "saleDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "SaleRecord_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "Order" (
-  "id" TEXT NOT NULL, "orderNumber" TEXT NOT NULL, "type" TEXT NOT NULL DEFAULT 'sales',
-  "status" TEXT NOT NULL DEFAULT 'pending', "customerName" TEXT, "customerEmail" TEXT,
-  "supplierName" TEXT, "totalAmount" DOUBLE PRECISION NOT NULL DEFAULT 0, "notes" TEXT,
-  "createdById" TEXT NOT NULL, "katanaOrderId" TEXT, "quickbooksInvoiceId" TEXT,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Order_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "OrderItem" (
-  "id" TEXT NOT NULL, "orderId" TEXT NOT NULL, "productId" TEXT NOT NULL,
-  "quantity" INTEGER NOT NULL, "unitPrice" DOUBLE PRECISION NOT NULL, "total" DOUBLE PRECISION NOT NULL,
-  CONSTRAINT "OrderItem_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "OrderComment" (
-  "id" TEXT NOT NULL, "orderId" TEXT NOT NULL, "userId" TEXT NOT NULL, "content" TEXT NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "OrderComment_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "Task" (
-  "id" TEXT NOT NULL, "title" TEXT NOT NULL, "description" TEXT,
-  "status" TEXT NOT NULL DEFAULT 'todo', "priority" TEXT NOT NULL DEFAULT 'medium',
-  "category" TEXT NOT NULL DEFAULT 'general', "dueDate" TIMESTAMP(3), "completedAt" TIMESTAMP(3),
-  "assigneeId" TEXT, "createdById" TEXT NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "ActivityLog" (
-  "id" TEXT NOT NULL, "userId" TEXT, "action" TEXT NOT NULL,
-  "entityType" TEXT NOT NULL, "entityId" TEXT NOT NULL, "details" TEXT,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "ActivityLog_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "IntegrationConfig" (
-  "id" TEXT NOT NULL, "provider" TEXT NOT NULL, "apiKey" TEXT, "apiSecret" TEXT, "baseUrl" TEXT,
-  "isActive" BOOLEAN NOT NULL DEFAULT false, "lastSyncAt" TIMESTAMP(3), "settings" TEXT,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "IntegrationConfig_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "Transfer" (
-  "id" TEXT NOT NULL, "transferNumber" TEXT NOT NULL, "fromLocationId" TEXT NOT NULL, "toLocationId" TEXT NOT NULL,
-  "status" TEXT NOT NULL DEFAULT 'requested', "priority" TEXT NOT NULL DEFAULT 'normal',
-  "reason" TEXT, "notes" TEXT, "trackingNumber" TEXT, "shippingMethod" TEXT, "estimatedArrival" TIMESTAMP(3),
-  "requestedById" TEXT NOT NULL, "approvedById" TEXT, "receivedById" TEXT,
-  "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "approvedAt" TIMESTAMP(3), "shippedAt" TIMESTAMP(3), "receivedAt" TIMESTAMP(3),
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Transfer_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "TransferItem" (
-  "id" TEXT NOT NULL, "transferId" TEXT NOT NULL, "productId" TEXT NOT NULL,
-  "quantityRequested" INTEGER NOT NULL, "quantityShipped" INTEGER, "quantityReceived" INTEGER,
-  "unitCost" DOUBLE PRECISION, "notes" TEXT,
-  CONSTRAINT "TransferItem_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "TransferComment" (
-  "id" TEXT NOT NULL, "transferId" TEXT NOT NULL, "userId" TEXT NOT NULL, "content" TEXT NOT NULL,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "TransferComment_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "Alert" (
-  "id" TEXT NOT NULL, "type" TEXT NOT NULL, "severity" TEXT NOT NULL DEFAULT 'warning',
-  "title" TEXT NOT NULL, "message" TEXT NOT NULL, "entityType" TEXT, "entityId" TEXT,
-  "isRead" BOOLEAN NOT NULL DEFAULT false, "isDismissed" BOOLEAN NOT NULL DEFAULT false,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "Alert_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "InventoryHistory" (
-  "id" TEXT NOT NULL, "productId" TEXT NOT NULL, "location" TEXT NOT NULL,
-  "previousQty" INTEGER NOT NULL, "newQty" INTEGER NOT NULL, "changeQty" INTEGER NOT NULL,
-  "changeType" TEXT NOT NULL, "source" TEXT NOT NULL, "syncId" TEXT, "notes" TEXT,
-  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "InventoryHistory_pkey" PRIMARY KEY ("id")
-);
-CREATE TABLE IF NOT EXISTS "SyncLog" (
-  "id" TEXT NOT NULL, "scope" TEXT NOT NULL, "status" TEXT NOT NULL, "trigger" TEXT NOT NULL,
-  "productsCreated" INTEGER NOT NULL DEFAULT 0, "productsUpdated" INTEGER NOT NULL DEFAULT 0,
-  "inventorySynced" INTEGER NOT NULL DEFAULT 0, "inventoryChanged" INTEGER NOT NULL DEFAULT 0,
-  "locationsCreated" INTEGER NOT NULL DEFAULT 0, "locationsUpdated" INTEGER NOT NULL DEFAULT 0,
-  "ordersCreated" INTEGER NOT NULL DEFAULT 0, "ordersUpdated" INTEGER NOT NULL DEFAULT 0,
-  "errorMessage" TEXT, "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, "completedAt" TIMESTAMP(3),
-  CONSTRAINT "SyncLog_pkey" PRIMARY KEY ("id")
-);
-`;
-
-const CREATE_INDEXES_SQL = `
-CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
-CREATE UNIQUE INDEX IF NOT EXISTS "Location_name_key" ON "Location"("name");
-CREATE UNIQUE INDEX IF NOT EXISTS "Location_code_key" ON "Location"("code");
-CREATE UNIQUE INDEX IF NOT EXISTS "Product_sku_key" ON "Product"("sku");
-CREATE UNIQUE INDEX IF NOT EXISTS "Inventory_productId_location_key" ON "Inventory"("productId", "location");
-CREATE UNIQUE INDEX IF NOT EXISTS "Order_orderNumber_key" ON "Order"("orderNumber");
-CREATE UNIQUE INDEX IF NOT EXISTS "IntegrationConfig_provider_key" ON "IntegrationConfig"("provider");
-CREATE UNIQUE INDEX IF NOT EXISTS "Transfer_transferNumber_key" ON "Transfer"("transferNumber");
-CREATE INDEX IF NOT EXISTS "InventoryHistory_productId_idx" ON "InventoryHistory"("productId");
-CREATE INDEX IF NOT EXISTS "InventoryHistory_location_idx" ON "InventoryHistory"("location");
-CREATE INDEX IF NOT EXISTS "InventoryHistory_createdAt_idx" ON "InventoryHistory"("createdAt");
-CREATE INDEX IF NOT EXISTS "InventoryHistory_syncId_idx" ON "InventoryHistory"("syncId");
-CREATE INDEX IF NOT EXISTS "SyncLog_startedAt_idx" ON "SyncLog"("startedAt");
-`;
-
-const ADD_FOREIGN_KEYS_SQL = `
-DO $$ BEGIN ALTER TABLE "User" ADD CONSTRAINT "User_locationId_fkey" FOREIGN KEY ("locationId") REFERENCES "Location"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Inventory" ADD CONSTRAINT "Inventory_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "ProductDocument" ADD CONSTRAINT "ProductDocument_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "SaleRecord" ADD CONSTRAINT "SaleRecord_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Order" ADD CONSTRAINT "Order_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "OrderComment" ADD CONSTRAINT "OrderComment_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "OrderComment" ADD CONSTRAINT "OrderComment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Task" ADD CONSTRAINT "Task_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Task" ADD CONSTRAINT "Task_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "ActivityLog" ADD CONSTRAINT "ActivityLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Transfer" ADD CONSTRAINT "Transfer_fromLocationId_fkey" FOREIGN KEY ("fromLocationId") REFERENCES "Location"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Transfer" ADD CONSTRAINT "Transfer_toLocationId_fkey" FOREIGN KEY ("toLocationId") REFERENCES "Location"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Transfer" ADD CONSTRAINT "Transfer_requestedById_fkey" FOREIGN KEY ("requestedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Transfer" ADD CONSTRAINT "Transfer_approvedById_fkey" FOREIGN KEY ("approvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "Transfer" ADD CONSTRAINT "Transfer_receivedById_fkey" FOREIGN KEY ("receivedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "TransferItem" ADD CONSTRAINT "TransferItem_transferId_fkey" FOREIGN KEY ("transferId") REFERENCES "Transfer"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "TransferComment" ADD CONSTRAINT "TransferComment_transferId_fkey" FOREIGN KEY ("transferId") REFERENCES "Transfer"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "TransferComment" ADD CONSTRAINT "TransferComment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER TABLE "InventoryHistory" ADD CONSTRAINT "InventoryHistory_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-`;
 
 // Check setup status
 export async function GET() {
@@ -202,10 +36,8 @@ export async function POST() {
       if (msg.includes("does not exist") || msg.includes("P2021") || msg.includes("relation")) {
         try {
           console.log("Tables not found — creating via raw SQL...");
-          await prisma.$executeRawUnsafe(CREATE_TABLES_SQL);
-          await prisma.$executeRawUnsafe(CREATE_INDEXES_SQL);
-          await prisma.$executeRawUnsafe(ADD_FOREIGN_KEYS_SQL);
-          console.log("Tables created successfully");
+          const result = await createAllTables();
+          console.log("Tables created successfully:", result);
           schemaReady = true;
         } catch (sqlErr) {
           console.error("Raw SQL table creation failed:", sqlErr);
