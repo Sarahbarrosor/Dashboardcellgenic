@@ -7,6 +7,18 @@
   "functions": {
     "src/app/api/katana/sync/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/katana/cron/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/setup/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/katana/cron",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

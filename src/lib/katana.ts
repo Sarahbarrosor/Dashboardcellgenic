@@ -269,7 +269,7 @@ export async function syncProducts(): Promise<{ created: number; updated: number
   return { created, updated };
 }
 
-export async function syncInventory(): Promise<{ synced: number; skipped: number }> {
+export async function syncInventory(syncId?: string): Promise<{ synced: number; skipped: number; changed: number }> {
   const [inventory, katanaLocations, variants] = await Promise.all([
     fetchInventory(),
     fetchLocations(),
@@ -279,7 +279,7 @@ export async function syncInventory(): Promise<{ synced: number; skipped: number
   const locationMap = new Map(katanaLocations.map((l) => [l.id, l.name]));
   const variantMap = new Map(variants.map((v) => [v.id, v]));
 
-  let synced = 0, skipped = 0;
+  let synced = 0, skipped = 0, changed = 0;
 
   for (const item of inventory) {
     const locationName = locationMap.get(item.location_id);
@@ -298,26 +298,52 @@ export async function syncInventory(): Promise<{ synced: number; skipped: number
       continue;
     }
 
+    const newQty = Math.floor(item.quantity_in_stock);
+
+    const existing = await prisma.inventory.findUnique({
+      where: { productId_location: { productId: product.id, location: locationName } },
+    });
+
+    const previousQty = existing?.quantity ?? 0;
+
     await prisma.inventory.upsert({
       where: { productId_location: { productId: product.id, location: locationName } },
       update: {
-        quantity: Math.floor(item.quantity_in_stock),
+        quantity: newQty,
         reorderPoint: item.reorder_point || undefined,
         reorderQuantity: item.minimum_order_quantity || undefined,
       },
       create: {
         productId: product.id,
         location: locationName,
-        quantity: Math.floor(item.quantity_in_stock),
+        quantity: newQty,
         minimumThreshold: 10,
         reorderPoint: item.reorder_point || 20,
         reorderQuantity: item.minimum_order_quantity || 50,
       },
     });
+
+    if (previousQty !== newQty) {
+      await prisma.inventoryHistory.create({
+        data: {
+          productId: product.id,
+          location: locationName,
+          previousQty,
+          newQty,
+          changeQty: newQty - previousQty,
+          changeType: "sync",
+          source: "katana",
+          syncId,
+          notes: `Katana sync: ${previousQty} → ${newQty}`,
+        },
+      });
+      changed++;
+    }
+
     synced++;
   }
 
-  return { synced, skipped };
+  return { synced, skipped, changed };
 }
 
 export async function syncSalesOrders(): Promise<{ created: number; updated: number; salesRecords: number }> {
@@ -395,38 +421,71 @@ export async function syncSalesOrders(): Promise<{ created: number; updated: num
   return { created, updated, salesRecords };
 }
 
-export async function fullSync(): Promise<{
+export async function fullSync(trigger: string = "manual"): Promise<{
   locations: Awaited<ReturnType<typeof syncLocations>>;
   products: Awaited<ReturnType<typeof syncProducts>>;
   inventory: Awaited<ReturnType<typeof syncInventory>>;
   salesOrders: Awaited<ReturnType<typeof syncSalesOrders>>;
   syncedAt: string;
+  syncLogId: string;
 }> {
-  const locations = await syncLocations();
-  const products = await syncProducts();
-  const inventory = await syncInventory();
-  const salesOrders = await syncSalesOrders();
-
-  await prisma.integrationConfig.update({
-    where: { provider: "katana" },
-    data: { lastSyncAt: new Date(), isActive: true },
-  }).catch(() => {
-    // If config doesn't exist, create it
-    return prisma.integrationConfig.create({
-      data: {
-        provider: "katana",
-        lastSyncAt: new Date(),
-        isActive: true,
-        baseUrl: KATANA_BASE_URL,
-      },
-    });
+  const syncLog = await prisma.syncLog.create({
+    data: { scope: "all", status: "running", trigger },
   });
 
-  return {
-    locations,
-    products,
-    inventory,
-    salesOrders,
-    syncedAt: new Date().toISOString(),
-  };
+  try {
+    const locations = await syncLocations();
+    const products = await syncProducts();
+    const inventory = await syncInventory(syncLog.id);
+    const salesOrders = await syncSalesOrders();
+
+    await prisma.syncLog.update({
+      where: { id: syncLog.id },
+      data: {
+        status: "completed",
+        completedAt: new Date(),
+        locationsCreated: locations.created,
+        locationsUpdated: locations.updated,
+        productsCreated: products.created,
+        productsUpdated: products.updated,
+        inventorySynced: inventory.synced,
+        inventoryChanged: inventory.changed,
+        ordersCreated: salesOrders.created,
+        ordersUpdated: salesOrders.updated,
+      },
+    });
+
+    await prisma.integrationConfig.update({
+      where: { provider: "katana" },
+      data: { lastSyncAt: new Date(), isActive: true },
+    }).catch(() => {
+      return prisma.integrationConfig.create({
+        data: {
+          provider: "katana",
+          lastSyncAt: new Date(),
+          isActive: true,
+          baseUrl: KATANA_BASE_URL,
+        },
+      });
+    });
+
+    return {
+      locations,
+      products,
+      inventory,
+      salesOrders,
+      syncedAt: new Date().toISOString(),
+      syncLogId: syncLog.id,
+    };
+  } catch (error) {
+    await prisma.syncLog.update({
+      where: { id: syncLog.id },
+      data: {
+        status: "failed",
+        completedAt: new Date(),
+        errorMessage: error instanceof Error ? error.message : String(error),
+      },
+    });
+    throw error;
+  }
 }

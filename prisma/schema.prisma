@@ -72,10 +72,11 @@ model Product {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  inventory     Inventory[]
-  documents     ProductDocument[]
-  orderItems    OrderItem[]
-  salesRecords  SaleRecord[]
+  inventory        Inventory[]
+  documents        ProductDocument[]
+  orderItems       OrderItem[]
+  salesRecords     SaleRecord[]
+  inventoryHistory InventoryHistory[]
 }
 
 model Inventory {
@@ -281,6 +282,49 @@ model TransferComment {
 
   transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id])
+}
+
+// ─── Inventory History (Change Tracking) ────────────────────────
+
+model InventoryHistory {
+  id          String   @id @default(cuid())
+  productId   String
+  location    String
+  previousQty Int
+  newQty      Int
+  changeQty   Int
+  changeType  String   // sync, manual, transfer, sale
+  source      String   // katana, manual, transfer_in, transfer_out, system
+  syncId      String?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([location])
+  @@index([createdAt])
+  @@index([syncId])
+}
+
+model SyncLog {
+  id          String   @id @default(cuid())
+  scope       String   // all, locations, products, inventory, sales_orders
+  status      String   // running, completed, failed
+  trigger     String   // cron, manual, webhook
+  productsCreated   Int @default(0)
+  productsUpdated   Int @default(0)
+  inventorySynced   Int @default(0)
+  inventoryChanged  Int @default(0)
+  locationsCreated  Int @default(0)
+  locationsUpdated  Int @default(0)
+  ordersCreated     Int @default(0)
+  ordersUpdated     Int @default(0)
+  errorMessage String?
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([startedAt])
 }
 
 // ─── Alerts ──────────────────────────────────────────────────────

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         break;
       case "all":
       default:
-        result = await fullSync();
+        result = await fullSync("manual");
     }
 
     return NextResponse.json({ ok: true, ...result });
