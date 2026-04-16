@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ─── Users & Teams ───────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String   @default("member") // admin, manager, member
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedTasks  Task[]         @relation("TaskAssignee")
+  createdTasks   Task[]         @relation("TaskCreator")
+  orders         Order[]        @relation("OrderCreator")
+  orderComments  OrderComment[]
+  activityLogs   ActivityLog[]
+}
+
+// ─── Products & Inventory ────────────────────────────────────────
+
+model Product {
+  id            String   @id @default(cuid())
+  sku           String   @unique
+  name          String
+  description   String?
+  category      String
+  brand         String   @default("Cellgenic")
+  unitPrice     Float
+  costPrice     Float
+  imageUrl      String?
+  katanaId      String?  // External Katana reference
+  quickbooksId  String?  // External QuickBooks reference
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  inventory     Inventory[]
+  documents     ProductDocument[]
+  orderItems    OrderItem[]
+  salesRecords  SaleRecord[]
+}
+
+model Inventory {
+  id               String   @id @default(cuid())
+  productId        String
+  location         String   @default("Main Warehouse")
+  quantity         Int
+  minimumThreshold Int      @default(10)
+  reorderPoint     Int      @default(20)
+  reorderQuantity  Int      @default(50)
+  lastRestocked    DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, location])
+}
+
+model ProductDocument {
+  id          String   @id @default(cuid())
+  productId   String
+  name        String
+  type        String   // coa, first_party_test, third_party_test, brochure, catalog, msds, other
+  fileUrl     String
+  fileSize    Int?
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ─── Sales Tracking ──────────────────────────────────────────────
+
+model SaleRecord {
+  id          String   @id @default(cuid())
+  productId   String
+  quantity    Int
+  unitPrice   Float
+  totalAmount Float
+  channel     String   @default("direct") // direct, online, wholesale, distributor
+  customerName String?
+  saleDate    DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ─── Orders ──────────────────────────────────────────────────────
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  type            String   @default("sales") // sales, purchase, internal
+  status          String   @default("pending") // pending, confirmed, processing, shipped, delivered, cancelled
+  customerName    String?
+  customerEmail   String?
+  supplierName    String?
+  totalAmount     Float    @default(0)
+  notes           String?
+  createdById     String
+  katanaOrderId   String?
+  quickbooksInvoiceId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdBy  User          @relation("OrderCreator", fields: [createdById], references: [id])
+  items      OrderItem[]
+  comments   OrderComment[]
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  unitPrice Float
+  total     Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model OrderComment {
+  id        String   @id @default(cuid())
+  orderId   String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+}
+
+// ─── Tasks & Workflows ──────────────────────────────────────────
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("todo") // todo, in_progress, review, done
+  priority    String    @default("medium") // low, medium, high, urgent
+  category    String    @default("general") // general, inventory, orders, shipping, quality, admin
+  dueDate     DateTime?
+  completedAt DateTime?
+  assigneeId  String?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  assignee  User? @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User  @relation("TaskCreator", fields: [createdById], references: [id])
+}
+
+// ─── Activity & Audit Log ────────────────────────────────────────
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String   // created, updated, deleted, status_changed, commented, etc.
+  entityType  String   // order, task, product, inventory
+  entityId    String
+  details     String?
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+// ─── Integration Settings ────────────────────────────────────────
+
+model IntegrationConfig {
+  id          String   @id @default(cuid())
+  provider    String   @unique // katana, quickbooks
+  apiKey      String?
+  apiSecret   String?
+  baseUrl     String?
+  isActive    Boolean  @default(false)
+  lastSyncAt  DateTime?
+  settings    String?  // JSON string for additional settings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Alerts ──────────────────────────────────────────────────────
+
+model Alert {
+  id          String   @id @default(cuid())
+  type        String   // low_stock, reorder, overdue_task, order_status, system
+  severity    String   @default("warning") // info, warning, critical
+  title       String
+  message     String
+  entityType  String?
+  entityId    String?
+  isRead      Boolean  @default(false)
+  isDismissed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
