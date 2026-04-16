@@ -12,6 +12,8 @@ import {
   ShoppingCart,
   Settings,
   AlertTriangle,
+  ArrowRightLeft,
+  MapPin,
   Menu,
   X,
 } from "lucide-react";
@@ -21,6 +23,8 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Products", href: "/products", icon: Database },
+  { name: "Transfers", href: "/transfers", icon: ArrowRightLeft },
+  { name: "Locations", href: "/locations", icon: MapPin },
   { name: "Sales & Insights", href: "/sales", icon: TrendingUp },
   { name: "Tasks", href: "/tasks", icon: CheckSquare },
   { name: "Orders", href: "/orders", icon: ShoppingCart },

@@ -8,6 +8,9 @@ async function main() {
   // Clear existing data
   await prisma.activityLog.deleteMany();
   await prisma.alert.deleteMany();
+  await prisma.transferComment.deleteMany();
+  await prisma.transferItem.deleteMany();
+  await prisma.transfer.deleteMany();
   await prisma.orderComment.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
@@ -18,23 +21,43 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.integrationConfig.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.location.deleteMany();
+
+  // ─── Locations ─────────────────────────────────────────────
+  const locationData = [
+    { name: "Main Warehouse", code: "MWH", type: "warehouse", address: "1500 Industrial Blvd", city: "Los Angeles", managerName: "David Chen", managerEmail: "david@cellgenic.com", phone: "(310) 555-0101" },
+    { name: "Distribution Center", code: "DIS", type: "distribution", address: "400 Logistics Way", city: "Chicago", managerName: "Maria Santos", managerEmail: "maria@cellgenic.com", phone: "(312) 555-0102" },
+    { name: "East Coast Hub", code: "EAS", type: "warehouse", address: "88 Harbor Dr", city: "Newark", managerName: "James Wilson", managerEmail: "james@cellgenic.com", phone: "(973) 555-0103" },
+    { name: "West Coast Hub", code: "WES", type: "warehouse", address: "2200 Pacific Coast Hwy", city: "Long Beach", managerName: "Ana Rodriguez", managerEmail: "ana@cellgenic.com", phone: "(562) 555-0104" },
+    { name: "Retail Store", code: "RET", type: "retail", address: "42 Main Street", city: "San Diego", managerName: "Sarah Barros", managerEmail: "sarah@cellgenic.com", phone: "(619) 555-0105" },
+    { name: "International Depot", code: "INT", type: "depot", address: "Port Complex, Terminal 4", city: "Miami", country: "USA", managerName: "David Chen", managerEmail: "david@cellgenic.com", phone: "(305) 555-0106" },
+  ];
+
+  const createdLocations = await Promise.all(
+    locationData.map((loc) => prisma.location.create({ data: loc }))
+  );
+  const locationsByName = Object.fromEntries(createdLocations.map((l) => [l.name, l]));
+  console.log(`  Created ${createdLocations.length} locations`);
 
   // ─── Users ─────────────────────────────────────────────────
   const users = await Promise.all([
     prisma.user.create({
-      data: { name: "Sarah Barros", email: "sarah@cellgenic.com", role: "admin" },
+      data: { name: "Sarah Barros", email: "sarah@cellgenic.com", role: "admin", locationId: locationsByName["Retail Store"].id },
     }),
     prisma.user.create({
-      data: { name: "David Chen", email: "david@cellgenic.com", role: "manager" },
+      data: { name: "David Chen", email: "david@cellgenic.com", role: "manager", locationId: locationsByName["Main Warehouse"].id },
     }),
     prisma.user.create({
-      data: { name: "Maria Santos", email: "maria@cellgenic.com", role: "member" },
+      data: { name: "Maria Santos", email: "maria@cellgenic.com", role: "manager", locationId: locationsByName["Distribution Center"].id },
     }),
     prisma.user.create({
-      data: { name: "James Wilson", email: "james@cellgenic.com", role: "member" },
+      data: { name: "James Wilson", email: "james@cellgenic.com", role: "manager", locationId: locationsByName["East Coast Hub"].id },
     }),
     prisma.user.create({
-      data: { name: "Ana Rodriguez", email: "ana@cellgenic.com", role: "member" },
+      data: { name: "Ana Rodriguez", email: "ana@cellgenic.com", role: "manager", locationId: locationsByName["West Coast Hub"].id },
+    }),
+    prisma.user.create({
+      data: { name: "Carlos Pereira", email: "carlos@cellgenic.com", role: "member", locationId: locationsByName["International Depot"].id },
     }),
   ]);
   console.log(`  Created ${users.length} users`);
@@ -195,12 +218,19 @@ async function main() {
   console.log(`  Created ${products.length} products`);
 
   // ─── Inventory ─────────────────────────────────────────────
-  const locations = ["Main Warehouse", "Distribution Center", "Retail Store"];
+  const locationNames = createdLocations.map((l) => l.name);
+  const baseQuantityByType: Record<string, number> = {
+    warehouse: 100,
+    distribution: 50,
+    depot: 70,
+    retail: 15,
+    office: 0,
+  };
   const inventoryRecords = [];
 
   for (const product of products) {
-    for (const location of locations) {
-      const baseQty = location === "Main Warehouse" ? 100 : location === "Distribution Center" ? 40 : 15;
+    for (const loc of createdLocations) {
+      const baseQty = baseQuantityByType[loc.type] ?? 30;
       const variation = Math.floor(Math.random() * baseQty * 0.8);
       const quantity = Math.max(0, baseQty - variation);
 
@@ -208,11 +238,11 @@ async function main() {
         prisma.inventory.create({
           data: {
             productId: product.id,
-            location,
+            location: loc.name,
             quantity,
-            minimumThreshold: location === "Main Warehouse" ? 15 : location === "Distribution Center" ? 8 : 3,
-            reorderPoint: location === "Main Warehouse" ? 30 : 15,
-            reorderQuantity: location === "Main Warehouse" ? 100 : 50,
+            minimumThreshold: loc.type === "warehouse" ? 15 : loc.type === "retail" ? 3 : 8,
+            reorderPoint: loc.type === "warehouse" ? 30 : 15,
+            reorderQuantity: loc.type === "warehouse" ? 100 : 50,
             lastRestocked: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
           },
         })
@@ -403,8 +433,194 @@ async function main() {
   await Promise.all(tasks);
   console.log(`  Created ${tasks.length} tasks`);
 
+  // ─── Transfers ─────────────────────────────────────────────
+  const transferScenarios = [
+    {
+      fromName: "Main Warehouse",
+      toName: "Retail Store",
+      status: "in_transit",
+      priority: "high",
+      reason: "Retail floor restocking after weekend sales surge",
+      trackingNumber: "INT-TRK-88291",
+      shippingMethod: "internal_fleet",
+      requester: "Sarah Barros",
+      approver: "David Chen",
+      items: [
+        { sku: "CG-CBD-500", qtyReq: 30, qtyShip: 30 },
+        { sku: "CG-GUM-30", qtyReq: 40, qtyShip: 40 },
+        { sku: "CG-TOP-100", qtyReq: 15, qtyShip: 15 },
+      ],
+      daysAgo: 1,
+    },
+    {
+      fromName: "Distribution Center",
+      toName: "East Coast Hub",
+      status: "requested",
+      priority: "urgent",
+      reason: "East Coast Hub running critically low on top-sellers before trade show",
+      requester: "James Wilson",
+      items: [
+        { sku: "CG-CBD-1000", qtyReq: 50 },
+        { sku: "CG-CBD-2000", qtyReq: 25 },
+        { sku: "CG-BRD-750", qtyReq: 30 },
+      ],
+      daysAgo: 0,
+    },
+    {
+      fromName: "Main Warehouse",
+      toName: "West Coast Hub",
+      status: "approved",
+      priority: "normal",
+      reason: "Weekly restock cycle",
+      requester: "Ana Rodriguez",
+      approver: "David Chen",
+      items: [
+        { sku: "CG-CAP-30", qtyReq: 60, qtyShip: 60 },
+        { sku: "CG-CAP-60", qtyReq: 40, qtyShip: 40 },
+        { sku: "CG-SLP-500", qtyReq: 25, qtyShip: 25 },
+      ],
+      daysAgo: 1,
+    },
+    {
+      fromName: "East Coast Hub",
+      toName: "International Depot",
+      status: "in_transit",
+      priority: "normal",
+      reason: "Export preparation for Mexico distributor",
+      trackingNumber: "FDX-4872-11",
+      shippingMethod: "courier",
+      requester: "Carlos Pereira",
+      approver: "James Wilson",
+      items: [
+        { sku: "CG-ISO-1000", qtyReq: 20, qtyShip: 20 },
+        { sku: "CG-BAL-50", qtyReq: 15, qtyShip: 15 },
+      ],
+      daysAgo: 2,
+    },
+    {
+      fromName: "Main Warehouse",
+      toName: "Distribution Center",
+      status: "received",
+      priority: "normal",
+      reason: "Scheduled monthly replenishment",
+      trackingNumber: "INT-TRK-88102",
+      shippingMethod: "internal_fleet",
+      requester: "Maria Santos",
+      approver: "David Chen",
+      receiver: "Maria Santos",
+      items: [
+        { sku: "CG-CBD-500", qtyReq: 50, qtyShip: 50, qtyRec: 50 },
+        { sku: "CG-CBD-1000", qtyReq: 40, qtyShip: 40, qtyRec: 40 },
+        { sku: "CG-RLX-500", qtyReq: 20, qtyShip: 20, qtyRec: 20 },
+      ],
+      daysAgo: 7,
+    },
+    {
+      fromName: "West Coast Hub",
+      toName: "Retail Store",
+      status: "requested",
+      priority: "high",
+      reason: "Retail Store needs gummies & topicals urgently",
+      requester: "Sarah Barros",
+      items: [
+        { sku: "CG-GUM-60", qtyReq: 25 },
+        { sku: "CG-TOP-250", qtyReq: 12 },
+      ],
+      daysAgo: 0,
+    },
+  ];
+
+  const productsBySku = Object.fromEntries(products.map((p) => [p.sku, p]));
+  const usersByName = Object.fromEntries(users.map((u) => [u.name, u]));
+
+  let transferCount = 0;
+  for (const scenario of transferScenarios) {
+    transferCount++;
+    const now = Date.now();
+    const requestedAt = new Date(now - scenario.daysAgo * 24 * 60 * 60 * 1000);
+    const approvedAt = ["approved", "in_transit", "received"].includes(scenario.status)
+      ? new Date(requestedAt.getTime() + 3 * 60 * 60 * 1000) : null;
+    const shippedAt = ["in_transit", "received"].includes(scenario.status)
+      ? new Date((approvedAt?.getTime() || requestedAt.getTime()) + 6 * 60 * 60 * 1000) : null;
+    const receivedAt = scenario.status === "received"
+      ? new Date((shippedAt?.getTime() || requestedAt.getTime()) + 2 * 24 * 60 * 60 * 1000) : null;
+    const estimatedArrival = scenario.status === "in_transit"
+      ? new Date(now + 2 * 24 * 60 * 60 * 1000) : null;
+
+    await prisma.transfer.create({
+      data: {
+        transferNumber: `TRF-${String(1000 + transferCount).padStart(5, "0")}`,
+        fromLocationId: locationsByName[scenario.fromName].id,
+        toLocationId: locationsByName[scenario.toName].id,
+        status: scenario.status,
+        priority: scenario.priority,
+        reason: scenario.reason,
+        trackingNumber: scenario.trackingNumber,
+        shippingMethod: scenario.shippingMethod,
+        estimatedArrival,
+        requestedById: usersByName[scenario.requester].id,
+        approvedById: scenario.approver ? usersByName[scenario.approver].id : null,
+        receivedById: scenario.receiver ? usersByName[scenario.receiver].id : null,
+        requestedAt,
+        approvedAt,
+        shippedAt,
+        receivedAt,
+        items: {
+          create: scenario.items.map((it) => {
+            const item = it as { sku: string; qtyReq: number; qtyShip?: number; qtyRec?: number };
+            return {
+              productId: productsBySku[item.sku].id,
+              quantityRequested: item.qtyReq,
+              quantityShipped: item.qtyShip ?? null,
+              quantityReceived: item.qtyRec ?? null,
+              unitCost: productsBySku[item.sku].costPrice,
+            };
+          }),
+        },
+      },
+    });
+  }
+  console.log(`  Created ${transferCount} transfers`);
+
   // ─── Alerts ────────────────────────────────────────────────
+  const transfers = await prisma.transfer.findMany({
+    include: { fromLocation: true, toLocation: true, items: true, requestedBy: true },
+  });
+
+  const transferAlerts = [];
+  for (const t of transfers) {
+    if (t.status === "requested") {
+      transferAlerts.push({
+        type: "transfer_request",
+        severity: t.priority === "urgent" ? "critical" : "warning",
+        title: `Transfer Requested: ${t.transferNumber}`,
+        message: `${t.requestedBy.name} at ${t.toLocation.name} requested ${t.items.length} item(s) from ${t.fromLocation.name}. Awaiting approval.`,
+        entityType: "transfer",
+        entityId: t.id,
+      });
+    } else if (t.status === "in_transit") {
+      transferAlerts.push({
+        type: "transfer_incoming",
+        severity: "info",
+        title: `Incoming Shipment: ${t.transferNumber}`,
+        message: `${t.items.length} item(s) in transit from ${t.fromLocation.name} → ${t.toLocation.name}${t.trackingNumber ? ` (${t.trackingNumber})` : ""}.`,
+        entityType: "transfer",
+        entityId: t.id,
+      });
+    } else if (t.status === "approved") {
+      transferAlerts.push({
+        type: "transfer_approved",
+        severity: "info",
+        title: `Transfer Approved: ${t.transferNumber}`,
+        message: `Transfer from ${t.fromLocation.name} to ${t.toLocation.name} has been approved and is being prepared for shipment.`,
+        entityType: "transfer",
+        entityId: t.id,
+      });
+    }
+  }
+
   const alerts = [
+    ...transferAlerts,
     { type: "low_stock", severity: "critical", title: "Out of Stock: CBD Oil Tincture 500mg", message: "CBD Oil Tincture 500mg (CG-CBD-500) is out of stock at Retail Store. Immediate restock required." },
     { type: "low_stock", severity: "warning", title: "Low Stock: CBD Gummies 30ct", message: "CBD Gummies 30ct has only 5 units remaining at Distribution Center (min: 8)." },
     { type: "low_stock", severity: "warning", title: "Low Stock: Pet CBD Oil 300mg", message: "Pet CBD Oil 300mg has only 3 units remaining at Main Warehouse (min: 15)." },

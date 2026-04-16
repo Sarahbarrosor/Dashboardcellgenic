@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Users & Teams ───────────────────────────────────────────────
@@ -15,14 +16,42 @@ model User {
   email     String   @unique
   role      String   @default("member") // admin, manager, member
   avatar    String?
+  locationId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  location       Location?      @relation(fields: [locationId], references: [id])
   assignedTasks  Task[]         @relation("TaskAssignee")
   createdTasks   Task[]         @relation("TaskCreator")
   orders         Order[]        @relation("OrderCreator")
   orderComments  OrderComment[]
   activityLogs   ActivityLog[]
+  requestedTransfers  Transfer[]        @relation("TransferRequester")
+  approvedTransfers   Transfer[]        @relation("TransferApprover")
+  receivedTransfers   Transfer[]        @relation("TransferReceiver")
+  transferComments    TransferComment[]
+}
+
+// ─── Locations ───────────────────────────────────────────────────
+
+model Location {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  code       String?  @unique // short code e.g. "MWH", "EAS"
+  type       String   @default("warehouse") // warehouse, distribution, retail, depot, office
+  address    String?
+  city       String?
+  country    String?  @default("USA")
+  managerName  String?
+  managerEmail String?
+  phone      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users              User[]
+  outgoingTransfers  Transfer[] @relation("FromLocation")
+  incomingTransfers  Transfer[] @relation("ToLocation")
 }
 
 // ─── Products & Inventory ────────────────────────────────────────
@@ -189,6 +218,69 @@ model IntegrationConfig {
   settings    String?  // JSON string for additional settings
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ─── Transfers Between Locations ────────────────────────────────
+
+model Transfer {
+  id               String    @id @default(cuid())
+  transferNumber   String    @unique
+  fromLocationId   String
+  toLocationId     String
+  status           String    @default("requested")
+  // requested → pending approval at source location
+  // approved → source approved, preparing to ship
+  // in_transit → shipped, on the way
+  // received → delivered and confirmed at destination
+  // rejected → rejected by source location
+  // cancelled → cancelled by requester
+  priority         String    @default("normal") // low, normal, high, urgent
+  reason           String?   // why the transfer is needed
+  notes            String?
+  trackingNumber   String?
+  shippingMethod   String?   // courier, internal_fleet, pickup
+  estimatedArrival DateTime?
+  requestedById    String
+  approvedById     String?
+  receivedById     String?
+  requestedAt      DateTime  @default(now())
+  approvedAt       DateTime?
+  shippedAt        DateTime?
+  receivedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  fromLocation Location          @relation("FromLocation", fields: [fromLocationId], references: [id])
+  toLocation   Location          @relation("ToLocation", fields: [toLocationId], references: [id])
+  requestedBy  User              @relation("TransferRequester", fields: [requestedById], references: [id])
+  approvedBy   User?             @relation("TransferApprover", fields: [approvedById], references: [id])
+  receivedBy   User?             @relation("TransferReceiver", fields: [receivedById], references: [id])
+  items        TransferItem[]
+  comments     TransferComment[]
+}
+
+model TransferItem {
+  id                String @id @default(cuid())
+  transferId        String
+  productId         String
+  quantityRequested Int
+  quantityShipped   Int?
+  quantityReceived  Int?
+  unitCost          Float?
+  notes             String?
+
+  transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+}
+
+model TransferComment {
+  id         String   @id @default(cuid())
+  transferId String
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+
+  transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
 }
 
 // ─── Alerts ──────────────────────────────────────────────────────
