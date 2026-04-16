@@ -64,7 +64,7 @@ export default function LocationsPage() {
     setLoading(true);
     fetch("/api/locations")
       .then((res) => res.json())
-      .then((data) => setLocations(data.locations))
+      .then((data) => setLocations(Array.isArray(data?.locations) ? data.locations : []))
       .catch(console.error)
       .finally(() => setLoading(false));
   };

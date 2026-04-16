@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ transfers: enriched, summary });
   } catch (error) {
     console.error("Transfers API error:", error);
-    return NextResponse.json({ error: "Failed to load transfers" }, { status: 500 });
+    return NextResponse.json({ transfers: [], summary: { total: 0, requested: 0, approved: 0, inTransit: 0, received: 0, rejected: 0, cancelled: 0 } });
   }
 }
 

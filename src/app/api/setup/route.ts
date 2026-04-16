@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -7,7 +11,6 @@ export const maxDuration = 60;
 // Check setup status
 export async function GET() {
   try {
-    // Try a simple query to see if schema is ready
     const userCount = await prisma.user.count();
     return NextResponse.json({
       schemaReady: true,
@@ -16,7 +19,6 @@ export async function GET() {
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    // Prisma error P2021 = table does not exist
     if (msg.includes("does not exist") || msg.includes("P2021") || msg.includes("relation")) {
       return NextResponse.json({ schemaReady: false, seeded: false });
     }
@@ -24,21 +26,37 @@ export async function GET() {
   }
 }
 
-// Run full setup: seed demo data (schema creation happens in build via prisma db push)
+// Run full setup: create tables + seed demo data
 export async function POST() {
   try {
-    // First verify schema exists
+    // Check if tables exist; if not, create them with prisma db push
+    let schemaReady = false;
     try {
       await prisma.user.count();
+      schemaReady = true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("does not exist") || msg.includes("P2021") || msg.includes("relation")) {
-        return NextResponse.json({
-          ok: false,
-          error: "Database tables don't exist yet. Redeploy the app so the build step creates them, or run `npx prisma db push` locally with your DATABASE_URL.",
-        }, { status: 400 });
+        try {
+          console.log("Tables not found — running prisma db push...");
+          const { stdout, stderr } = await execAsync("npx prisma db push --accept-data-loss --skip-generate", { timeout: 30000 });
+          console.log("prisma db push stdout:", stdout);
+          if (stderr) console.log("prisma db push stderr:", stderr);
+          schemaReady = true;
+        } catch (pushErr) {
+          console.error("prisma db push failed:", pushErr);
+          return NextResponse.json({
+            ok: false,
+            error: "Could not create database tables. Make sure DATABASE_URL and DIRECT_URL environment variables are set correctly in Vercel.",
+          }, { status: 500 });
+        }
+      } else {
+        throw err;
       }
-      throw err;
+    }
+
+    if (!schemaReady) {
+      return NextResponse.json({ ok: false, error: "Database schema could not be verified." }, { status: 500 });
     }
 
     // If already seeded, skip

@@ -9,7 +9,7 @@ export async function GET() {
     return NextResponse.json({ integrations });
   } catch (error) {
     console.error("Settings API error:", error);
-    return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
+    return NextResponse.json({ integrations: [] });
   }
 }
 

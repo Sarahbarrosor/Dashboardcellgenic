@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ alerts, summary });
   } catch (error) {
     console.error("Alerts API error:", error);
-    return NextResponse.json({ error: "Failed to load alerts" }, { status: 500 });
+    return NextResponse.json({ alerts: [], summary: { total: 0, unread: 0, critical: 0, warning: 0, info: 0 } });
   }
 }
 

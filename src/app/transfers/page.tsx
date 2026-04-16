@@ -148,8 +148,8 @@ export default function TransfersPage() {
   }, [fetchData]);
 
   useEffect(() => {
-    fetch("/api/locations").then((r) => r.json()).then((d) => setLocations(d.locations));
-    fetch("/api/products").then((r) => r.json()).then((d) => setProducts(d.products));
+    fetch("/api/locations").then((r) => r.json()).then((d) => setLocations(Array.isArray(d?.locations) ? d.locations : [])).catch(console.error);
+    fetch("/api/products").then((r) => r.json()).then((d) => setProducts(Array.isArray(d?.products) ? d.products : [])).catch(console.error);
   }, []);
 
   const createTransfer = async () => {

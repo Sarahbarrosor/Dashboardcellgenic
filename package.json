@@ -5,7 +5,7 @@
   "description": "Cellgenic Operations & Intelligence Platform",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (prisma db push --accept-data-loss --skip-generate || echo 'db push skipped') && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",

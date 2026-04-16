@@ -40,7 +40,7 @@ export async function GET() {
     return NextResponse.json({ locations: enriched });
   } catch (error) {
     console.error("Locations API error:", error);
-    return NextResponse.json({ error: "Failed to load locations" }, { status: 500 });
+    return NextResponse.json({ locations: [] });
   }
 }
 

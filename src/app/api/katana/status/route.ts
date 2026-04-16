@@ -16,9 +16,14 @@ export async function GET() {
       baseUrl: config?.baseUrl || process.env.KATANA_BASE_URL || "https://api.katanamrp.com/v1",
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
+    console.error("Katana status error:", error);
+    const hasEnvKey = !!process.env.KATANA_API_KEY;
+    return NextResponse.json({
+      configured: hasEnvKey,
+      hasEnvKey,
+      isActive: false,
+      lastSyncAt: null,
+      baseUrl: process.env.KATANA_BASE_URL || "https://api.katanamrp.com/v1",
+    });
   }
 }

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Inventory API error:", error);
-    return NextResponse.json({ error: "Failed to load inventory" }, { status: 500 });
+    return NextResponse.json({ items: [], locations: [], summary: { total: 0, ok: 0, low: 0, critical: 0, outOfStock: 0 } });
   }
 }
 

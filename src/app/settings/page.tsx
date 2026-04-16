@@ -65,10 +65,18 @@ export default function SettingsPage() {
 
   const loadData = async () => {
     setLoading(true);
-    const [settingsRes, katanaRes] = await Promise.all([
-      fetch("/api/settings").then((r) => r.json()),
-      fetch("/api/katana/status").then((r) => r.json()),
-    ]);
+    let settingsRes: { integrations: IntegrationConfig[] } = { integrations: [] };
+    let katanaRes: KatanaStatus = { configured: false, hasEnvKey: false, isActive: false, lastSyncAt: null, baseUrl: "https://api.katanamrp.com/v1" };
+    try {
+      const [sRes, kRes] = await Promise.all([
+        fetch("/api/settings").then((r) => r.json()),
+        fetch("/api/katana/status").then((r) => r.json()),
+      ]);
+      if (Array.isArray(sRes?.integrations)) settingsRes = sRes;
+      if (kRes && !kRes.error) katanaRes = kRes;
+    } catch (err) {
+      console.error("Failed to load settings:", err);
+    }
 
     setIntegrations(settingsRes.integrations);
     setKatanaStatus(katanaRes);
