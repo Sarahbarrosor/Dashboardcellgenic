@@ -34,13 +34,21 @@ export default function DashboardPage() {
   useEffect(() => {
     fetch("/api/dashboard")
       .then((res) => res.json())
-      .then(setData)
+      .then((d) => {
+        // Only set data if it's valid (no error field and has expected structure)
+        if (d && typeof d.totalProducts === "number") setData(d);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <LoadingSpinner className="h-96" />;
-  if (!data) return <p className="text-center text-gray-500 py-12">Failed to load dashboard data.</p>;
+  if (!data) return (
+    <div className="text-center text-gray-500 py-12">
+      <p className="text-sm">Dashboard data unavailable.</p>
+      <p className="text-xs mt-1">The database may not be initialized yet. Use the banner above to seed demo data.</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
