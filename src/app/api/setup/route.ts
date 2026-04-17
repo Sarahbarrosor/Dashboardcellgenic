@@ -13,19 +13,31 @@ export async function GET() {
       schemaReady: true,
       seeded: userCount > 0,
       counts: { users: userCount },
+      version: 2,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes("does not exist") || msg.includes("P2021") || msg.includes("relation")) {
-      return NextResponse.json({ schemaReady: false, seeded: false });
+      return NextResponse.json({ schemaReady: false, seeded: false, version: 2 });
     }
-    return NextResponse.json({ schemaReady: false, seeded: false, error: msg });
+    return NextResponse.json({ schemaReady: false, seeded: false, error: msg, version: 2 });
   }
 }
 
 // Run full setup: create tables via raw SQL + seed demo data
 export async function POST() {
   try {
+    // First, verify basic DB connectivity
+    try {
+      await prisma.$executeRawUnsafe(`SELECT 1`);
+    } catch (connErr) {
+      return NextResponse.json({
+        ok: false,
+        error: `Database connection failed: ${connErr instanceof Error ? connErr.message : String(connErr)}`,
+        version: 2,
+      }, { status: 500 });
+    }
+
     // Check if tables exist; if not, create them with raw SQL
     let schemaReady = false;
     try {
@@ -43,7 +55,8 @@ export async function POST() {
           console.error("Raw SQL table creation failed:", sqlErr);
           return NextResponse.json({
             ok: false,
-            error: `Could not create tables: ${sqlErr instanceof Error ? sqlErr.message : String(sqlErr)}`,
+            error: `SQL table creation failed: ${sqlErr instanceof Error ? sqlErr.message : String(sqlErr)}`,
+            version: 2,
           }, { status: 500 });
         }
       } else {
@@ -308,7 +321,7 @@ export async function POST() {
   } catch (error) {
     console.error("Setup error:", error);
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
+      { ok: false, error: error instanceof Error ? error.message : String(error), version: 2 },
       { status: 500 }
     );
   }
