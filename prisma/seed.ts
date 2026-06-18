@@ -3,653 +3,1198 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding database...");
+  await prisma.$connect();
 
-  // Clear existing data
+  console.log("Limpiando datos existentes...");
+
+  // Delete in correct order for FK constraints
   await prisma.activityLog.deleteMany();
+  await prisma.evidenciaEntrega.deleteMany();
+  await prisma.fulfillment.deleteMany();
+  await prisma.pago.deleteMany();
+  await prisma.solicitudDocumento.deleteMany();
+  await prisma.solicitud.deleteMany();
+  await prisma.inventario.deleteMany();
+  await prisma.producto.deleteMany();
+  await prisma.paciente.deleteMany();
+  await prisma.medicoDocumento.deleteMany();
+  await prisma.medico.deleteMany();
   await prisma.alert.deleteMany();
-  await prisma.transferComment.deleteMany();
-  await prisma.transferItem.deleteMany();
-  await prisma.transfer.deleteMany();
-  await prisma.orderComment.deleteMany();
-  await prisma.orderItem.deleteMany();
-  await prisma.order.deleteMany();
-  await prisma.task.deleteMany();
-  await prisma.saleRecord.deleteMany();
-  await prisma.productDocument.deleteMany();
-  await prisma.inventory.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.integrationConfig.deleteMany();
   await prisma.user.deleteMany();
-  await prisma.location.deleteMany();
 
-  // ─── Locations ─────────────────────────────────────────────
-  const locationData = [
-    { name: "Main Warehouse", code: "MWH", type: "warehouse", address: "1500 Industrial Blvd", city: "Los Angeles", managerName: "David Chen", managerEmail: "david@cellgenic.com", phone: "(310) 555-0101" },
-    { name: "Distribution Center", code: "DIS", type: "distribution", address: "400 Logistics Way", city: "Chicago", managerName: "Maria Santos", managerEmail: "maria@cellgenic.com", phone: "(312) 555-0102" },
-    { name: "East Coast Hub", code: "EAS", type: "warehouse", address: "88 Harbor Dr", city: "Newark", managerName: "James Wilson", managerEmail: "james@cellgenic.com", phone: "(973) 555-0103" },
-    { name: "West Coast Hub", code: "WES", type: "warehouse", address: "2200 Pacific Coast Hwy", city: "Long Beach", managerName: "Ana Rodriguez", managerEmail: "ana@cellgenic.com", phone: "(562) 555-0104" },
-    { name: "Retail Store", code: "RET", type: "retail", address: "42 Main Street", city: "San Diego", managerName: "Sarah Barros", managerEmail: "sarah@cellgenic.com", phone: "(619) 555-0105" },
-    { name: "International Depot", code: "INT", type: "depot", address: "Port Complex, Terminal 4", city: "Miami", country: "USA", managerName: "David Chen", managerEmail: "david@cellgenic.com", phone: "(305) 555-0106" },
-  ];
+  console.log("Datos eliminados. Creando seed data...");
 
-  const createdLocations = await Promise.all(
-    locationData.map((loc) => prisma.location.create({ data: loc }))
-  );
-  const locationsByName = Object.fromEntries(createdLocations.map((l) => [l.name, l]));
-  console.log(`  Created ${createdLocations.length} locations`);
-
-  // ─── Users ─────────────────────────────────────────────────
-  const users = await Promise.all([
-    prisma.user.create({
-      data: { name: "Sarah Barros", email: "sarah@cellgenic.com", role: "admin", locationId: locationsByName["Retail Store"].id },
-    }),
-    prisma.user.create({
-      data: { name: "David Chen", email: "david@cellgenic.com", role: "manager", locationId: locationsByName["Main Warehouse"].id },
-    }),
-    prisma.user.create({
-      data: { name: "Maria Santos", email: "maria@cellgenic.com", role: "manager", locationId: locationsByName["Distribution Center"].id },
-    }),
-    prisma.user.create({
-      data: { name: "James Wilson", email: "james@cellgenic.com", role: "manager", locationId: locationsByName["East Coast Hub"].id },
-    }),
-    prisma.user.create({
-      data: { name: "Ana Rodriguez", email: "ana@cellgenic.com", role: "manager", locationId: locationsByName["West Coast Hub"].id },
-    }),
-    prisma.user.create({
-      data: { name: "Carlos Pereira", email: "carlos@cellgenic.com", role: "member", locationId: locationsByName["International Depot"].id },
-    }),
-  ]);
-  console.log(`  Created ${users.length} users`);
-
-  // ─── Products ──────────────────────────────────────────────
-  const products = await Promise.all([
-    prisma.product.create({
-      data: {
-        sku: "CG-CBD-500",
-        name: "CBD Oil Tincture 500mg",
-        description: "Full-spectrum CBD oil tincture, 500mg, 30ml bottle. Third-party tested for purity and potency.",
-        category: "CBD Oils",
-        unitPrice: 49.99,
-        costPrice: 18.50,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-CBD-1000",
-        name: "CBD Oil Tincture 1000mg",
-        description: "Full-spectrum CBD oil tincture, 1000mg, 30ml bottle. Third-party tested.",
-        category: "CBD Oils",
-        unitPrice: 79.99,
-        costPrice: 28.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-CBD-2000",
-        name: "CBD Oil Tincture 2000mg",
-        description: "Full-spectrum CBD oil tincture, 2000mg, 60ml bottle. Premium grade.",
-        category: "CBD Oils",
-        unitPrice: 129.99,
-        costPrice: 42.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-CAP-30",
-        name: "CBD Capsules 30ct",
-        description: "CBD capsules, 25mg each, 30 count bottle. Easy-to-swallow softgels.",
-        category: "Capsules",
-        unitPrice: 39.99,
-        costPrice: 14.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-CAP-60",
-        name: "CBD Capsules 60ct",
-        description: "CBD capsules, 25mg each, 60 count bottle.",
-        category: "Capsules",
-        unitPrice: 69.99,
-        costPrice: 24.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-TOP-100",
-        name: "CBD Topical Cream 100mg",
-        description: "CBD-infused topical cream for targeted relief. 100mg CBD, 2oz jar.",
-        category: "Topicals",
-        unitPrice: 34.99,
-        costPrice: 12.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-TOP-250",
-        name: "CBD Topical Cream 250mg",
-        description: "CBD-infused topical cream, 250mg CBD, 4oz jar. Extra strength.",
-        category: "Topicals",
-        unitPrice: 54.99,
-        costPrice: 19.50,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-GUM-30",
-        name: "CBD Gummies 30ct",
-        description: "CBD gummies, 10mg each, assorted fruit flavors, 30 count.",
-        category: "Edibles",
-        unitPrice: 29.99,
-        costPrice: 10.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-GUM-60",
-        name: "CBD Gummies 60ct",
-        description: "CBD gummies, 10mg each, assorted fruit flavors, 60 count.",
-        category: "Edibles",
-        unitPrice: 49.99,
-        costPrice: 17.50,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-PET-300",
-        name: "Pet CBD Oil 300mg",
-        description: "CBD oil formulated for pets, 300mg, bacon-flavored, 30ml.",
-        category: "Pet Products",
-        unitPrice: 39.99,
-        costPrice: 14.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-SLP-500",
-        name: "CBD Sleep Formula 500mg",
-        description: "CBD oil with melatonin and lavender for sleep support, 500mg, 30ml.",
-        category: "CBD Oils",
-        unitPrice: 59.99,
-        costPrice: 22.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-RLX-500",
-        name: "CBD Relaxation Blend 500mg",
-        description: "CBD oil with chamomile and passionflower, 500mg, 30ml.",
-        category: "CBD Oils",
-        unitPrice: 54.99,
-        costPrice: 20.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-ISO-1000",
-        name: "CBD Isolate Powder 1000mg",
-        description: "Pure CBD isolate powder, 99%+ purity, 1000mg.",
-        category: "Isolates",
-        unitPrice: 44.99,
-        costPrice: 15.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-BAL-50",
-        name: "CBD Muscle Balm 50ml",
-        description: "Concentrated CBD muscle balm with menthol and arnica, 500mg CBD.",
-        category: "Topicals",
-        unitPrice: 44.99,
-        costPrice: 16.00,
-      },
-    }),
-    prisma.product.create({
-      data: {
-        sku: "CG-BRD-750",
-        name: "Broad Spectrum CBD 750mg",
-        description: "Broad spectrum CBD oil, THC-free, 750mg, 30ml.",
-        category: "CBD Oils",
-        unitPrice: 64.99,
-        costPrice: 24.00,
-      },
-    }),
-  ]);
-  console.log(`  Created ${products.length} products`);
-
-  // ─── Inventory ─────────────────────────────────────────────
-  const locationNames = createdLocations.map((l) => l.name);
-  const baseQuantityByType: Record<string, number> = {
-    warehouse: 100,
-    distribution: 50,
-    depot: 70,
-    retail: 15,
-    office: 0,
-  };
-  const inventoryRecords = [];
-
-  for (const product of products) {
-    for (const loc of createdLocations) {
-      const baseQty = baseQuantityByType[loc.type] ?? 30;
-      const variation = Math.floor(Math.random() * baseQty * 0.8);
-      const quantity = Math.max(0, baseQty - variation);
-
-      inventoryRecords.push(
-        prisma.inventory.create({
-          data: {
-            productId: product.id,
-            location: loc.name,
-            quantity,
-            minimumThreshold: loc.type === "warehouse" ? 15 : loc.type === "retail" ? 3 : 8,
-            reorderPoint: loc.type === "warehouse" ? 30 : 15,
-            reorderQuantity: loc.type === "warehouse" ? 100 : 50,
-            lastRestocked: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-          },
-        })
-      );
-    }
-  }
-  await Promise.all(inventoryRecords);
-  console.log(`  Created ${inventoryRecords.length} inventory records`);
-
-  // ─── Product Documents ─────────────────────────────────────
-  const docTypes = ["coa", "first_party_test", "third_party_test", "brochure"];
-  const docRecords = [];
-  for (const product of products) {
-    for (const type of docTypes) {
-      if (Math.random() > 0.3) {
-        docRecords.push(
-          prisma.productDocument.create({
-            data: {
-              productId: product.id,
-              name: `${product.name} - ${type === "coa" ? "Certificate of Analysis" : type === "first_party_test" ? "First-Party Lab Test" : type === "third_party_test" ? "Third-Party Lab Test" : "Product Brochure"}`,
-              type,
-              fileUrl: `/documents/${product.sku.toLowerCase()}-${type}.pdf`,
-              fileSize: Math.floor(Math.random() * 5000000) + 100000,
-              uploadedBy: users[Math.floor(Math.random() * users.length)].name,
-            },
-          })
-        );
-      }
-    }
-  }
-  await Promise.all(docRecords);
-  console.log(`  Created ${docRecords.length} product documents`);
-
-  // ─── Sales Records (last 180 days) ─────────────────────────
-  const channels = ["direct", "online", "wholesale", "distributor"];
-  const customers = [
-    "Green Valley Health", "Wellness First", "Natural Remedies Co",
-    "Pacific Health Store", "Mountain Top Organics", "Coastal Wellness",
-    "Urban Health Hub", "Sunrise Supplements", "Pure Life Store",
-    "Harmony Health", "VitalCare Pharmacy", "FreshStart Wellness",
-  ];
-  const salesRecords = [];
-
-  for (let daysAgo = 180; daysAgo >= 0; daysAgo--) {
-    const numSales = Math.floor(Math.random() * 8) + 2;
-    for (let i = 0; i < numSales; i++) {
-      const product = products[Math.floor(Math.random() * products.length)];
-      const quantity = Math.floor(Math.random() * 20) + 1;
-      const channel = channels[Math.floor(Math.random() * channels.length)];
-      const discount = channel === "wholesale" ? 0.85 : channel === "distributor" ? 0.75 : 1;
-      const unitPrice = Math.round(product.unitPrice * discount * 100) / 100;
-
-      salesRecords.push({
-        productId: product.id,
-        quantity,
-        unitPrice,
-        totalAmount: Math.round(quantity * unitPrice * 100) / 100,
-        channel,
-        customerName: customers[Math.floor(Math.random() * customers.length)],
-        saleDate: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000 + Math.random() * 12 * 60 * 60 * 1000),
-      });
-    }
-  }
-
-  // Batch create sales
-  for (let i = 0; i < salesRecords.length; i += 50) {
-    const batch = salesRecords.slice(i, i + 50);
-    await Promise.all(batch.map((record) => prisma.saleRecord.create({ data: record })));
-  }
-  console.log(`  Created ${salesRecords.length} sales records`);
-
-  // ─── Orders ────────────────────────────────────────────────
-  const orderStatuses = ["pending", "confirmed", "processing", "shipped", "delivered"];
-  const orders = [];
-  for (let i = 0; i < 25; i++) {
-    const type = i < 15 ? "sales" : i < 22 ? "purchase" : "internal";
-    const status = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
-    const prefix = type === "purchase" ? "PO" : type === "internal" ? "IO" : "SO";
-    const orderProducts = products.sort(() => Math.random() - 0.5).slice(0, Math.floor(Math.random() * 4) + 1);
-
-    const items = orderProducts.map((p) => {
-      const qty = Math.floor(Math.random() * 30) + 1;
-      return {
-        productId: p.id,
-        quantity: qty,
-        unitPrice: p.unitPrice,
-        total: Math.round(qty * p.unitPrice * 100) / 100,
-      };
-    });
-
-    const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
-
-    orders.push(
-      prisma.order.create({
-        data: {
-          orderNumber: `${prefix}-${String(1001 + i).padStart(5, "0")}`,
-          type,
-          status,
-          customerName: type !== "purchase" ? customers[Math.floor(Math.random() * customers.length)] : null,
-          customerEmail: type !== "purchase" ? `contact@${customers[Math.floor(Math.random() * customers.length)].toLowerCase().replace(/\s+/g, "")}.com` : null,
-          supplierName: type === "purchase" ? ["Raw Materials Co", "BioExtract Labs", "Hemp Source Inc", "PackagePro"][Math.floor(Math.random() * 4)] : null,
-          totalAmount,
-          notes: Math.random() > 0.5 ? "Standard shipping. Please include packing slip." : null,
-          createdById: users[Math.floor(Math.random() * users.length)].id,
-          createdAt: new Date(Date.now() - Math.random() * 45 * 24 * 60 * 60 * 1000),
-          items: { create: items },
-        },
-      })
-    );
-  }
-  const createdOrders = await Promise.all(orders);
-  console.log(`  Created ${createdOrders.length} orders`);
-
-  // ─── Order Comments ────────────────────────────────────────
-  const commentTemplates = [
-    "Customer confirmed receipt. Everything looks good.",
-    "Tracking number has been updated and sent to customer.",
-    "Waiting for supplier confirmation on delivery date.",
-    "Quality check passed. Ready for shipping.",
-    "Customer requested express shipping upgrade.",
-    "Invoice sent via QuickBooks.",
-    "Packaging completed, waiting for pickup.",
-    "Customer asked about bulk discount for next order.",
-    "Payment received and confirmed.",
-    "Shipped via FedEx. ETA 3-5 business days.",
-  ];
-
-  const comments = [];
-  for (const order of createdOrders) {
-    const numComments = Math.floor(Math.random() * 4);
-    for (let i = 0; i < numComments; i++) {
-      comments.push(
-        prisma.orderComment.create({
-          data: {
-            orderId: order.id,
-            userId: users[Math.floor(Math.random() * users.length)].id,
-            content: commentTemplates[Math.floor(Math.random() * commentTemplates.length)],
-            createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-          },
-        })
-      );
-    }
-  }
-  await Promise.all(comments);
-  console.log(`  Created ${comments.length} order comments`);
-
-  // ─── Tasks ─────────────────────────────────────────────────
-  const taskData = [
-    { title: "Restock CBD Oil Tincture 500mg at Main Warehouse", status: "todo", priority: "high", category: "inventory" },
-    { title: "Complete Q1 inventory audit", status: "in_progress", priority: "high", category: "inventory" },
-    { title: "Review third-party lab results for new batch", status: "todo", priority: "urgent", category: "quality" },
-    { title: "Update product brochures with new pricing", status: "in_progress", priority: "medium", category: "admin" },
-    { title: "Process wholesale order for Green Valley Health", status: "in_progress", priority: "high", category: "orders" },
-    { title: "Schedule meeting with Hemp Source Inc supplier", status: "todo", priority: "medium", category: "general" },
-    { title: "Set up QuickBooks integration for auto-invoicing", status: "todo", priority: "medium", category: "admin" },
-    { title: "Ship pending orders from last week", status: "review", priority: "urgent", category: "shipping" },
-    { title: "Create social media content for new product launch", status: "todo", priority: "low", category: "general" },
-    { title: "Prepare monthly sales report", status: "in_progress", priority: "medium", category: "admin" },
-    { title: "Contact Pacific Health Store about recurring order", status: "todo", priority: "medium", category: "orders" },
-    { title: "Update COAs for Broad Spectrum CBD line", status: "review", priority: "high", category: "quality" },
-    { title: "Organize warehouse shelving for new products", status: "done", priority: "low", category: "inventory" },
-    { title: "Fix labeling discrepancy on CBD Capsules batch", status: "done", priority: "urgent", category: "quality" },
-    { title: "Send invoices for delivered orders", status: "done", priority: "high", category: "orders" },
-    { title: "Review and approve new product packaging design", status: "review", priority: "medium", category: "quality" },
-    { title: "Train new team member on order processing", status: "todo", priority: "medium", category: "admin" },
-    { title: "Negotiate shipping rates with FedEx", status: "todo", priority: "low", category: "shipping" },
-  ];
-
-  const tasks = [];
-  for (const task of taskData) {
-    const dueOffset = task.status === "done" ? -5 : Math.floor(Math.random() * 14) - 3;
-    tasks.push(
-      prisma.task.create({
-        data: {
-          title: task.title,
-          description: `Task assigned from operations workflow. Category: ${task.category}`,
-          status: task.status,
-          priority: task.priority,
-          category: task.category,
-          dueDate: new Date(Date.now() + dueOffset * 24 * 60 * 60 * 1000),
-          completedAt: task.status === "done" ? new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) : null,
-          assigneeId: users[Math.floor(Math.random() * users.length)].id,
-          createdById: users[0].id,
-        },
-      })
-    );
-  }
-  await Promise.all(tasks);
-  console.log(`  Created ${tasks.length} tasks`);
-
-  // ─── Transfers ─────────────────────────────────────────────
-  const transferScenarios = [
-    {
-      fromName: "Main Warehouse",
-      toName: "Retail Store",
-      status: "in_transit",
-      priority: "high",
-      reason: "Retail floor restocking after weekend sales surge",
-      trackingNumber: "INT-TRK-88291",
-      shippingMethod: "internal_fleet",
-      requester: "Sarah Barros",
-      approver: "David Chen",
-      items: [
-        { sku: "CG-CBD-500", qtyReq: 30, qtyShip: 30 },
-        { sku: "CG-GUM-30", qtyReq: 40, qtyShip: 40 },
-        { sku: "CG-TOP-100", qtyReq: 15, qtyShip: 15 },
-      ],
-      daysAgo: 1,
+  // ─── Users ──────────────────────────────────────────────────────
+  const userSarah = await prisma.user.create({
+    data: {
+      name: "Sarah Barros",
+      email: "sarah@cellgenic.com",
+      role: "admin",
     },
-    {
-      fromName: "Distribution Center",
-      toName: "East Coast Hub",
-      status: "requested",
-      priority: "urgent",
-      reason: "East Coast Hub running critically low on top-sellers before trade show",
-      requester: "James Wilson",
-      items: [
-        { sku: "CG-CBD-1000", qtyReq: 50 },
-        { sku: "CG-CBD-2000", qtyReq: 25 },
-        { sku: "CG-BRD-750", qtyReq: 30 },
-      ],
-      daysAgo: 0,
-    },
-    {
-      fromName: "Main Warehouse",
-      toName: "West Coast Hub",
-      status: "approved",
-      priority: "normal",
-      reason: "Weekly restock cycle",
-      requester: "Ana Rodriguez",
-      approver: "David Chen",
-      items: [
-        { sku: "CG-CAP-30", qtyReq: 60, qtyShip: 60 },
-        { sku: "CG-CAP-60", qtyReq: 40, qtyShip: 40 },
-        { sku: "CG-SLP-500", qtyReq: 25, qtyShip: 25 },
-      ],
-      daysAgo: 1,
-    },
-    {
-      fromName: "East Coast Hub",
-      toName: "International Depot",
-      status: "in_transit",
-      priority: "normal",
-      reason: "Export preparation for Mexico distributor",
-      trackingNumber: "FDX-4872-11",
-      shippingMethod: "courier",
-      requester: "Carlos Pereira",
-      approver: "James Wilson",
-      items: [
-        { sku: "CG-ISO-1000", qtyReq: 20, qtyShip: 20 },
-        { sku: "CG-BAL-50", qtyReq: 15, qtyShip: 15 },
-      ],
-      daysAgo: 2,
-    },
-    {
-      fromName: "Main Warehouse",
-      toName: "Distribution Center",
-      status: "received",
-      priority: "normal",
-      reason: "Scheduled monthly replenishment",
-      trackingNumber: "INT-TRK-88102",
-      shippingMethod: "internal_fleet",
-      requester: "Maria Santos",
-      approver: "David Chen",
-      receiver: "Maria Santos",
-      items: [
-        { sku: "CG-CBD-500", qtyReq: 50, qtyShip: 50, qtyRec: 50 },
-        { sku: "CG-CBD-1000", qtyReq: 40, qtyShip: 40, qtyRec: 40 },
-        { sku: "CG-RLX-500", qtyReq: 20, qtyShip: 20, qtyRec: 20 },
-      ],
-      daysAgo: 7,
-    },
-    {
-      fromName: "West Coast Hub",
-      toName: "Retail Store",
-      status: "requested",
-      priority: "high",
-      reason: "Retail Store needs gummies & topicals urgently",
-      requester: "Sarah Barros",
-      items: [
-        { sku: "CG-GUM-60", qtyReq: 25 },
-        { sku: "CG-TOP-250", qtyReq: 12 },
-      ],
-      daysAgo: 0,
-    },
-  ];
-
-  const productsBySku = Object.fromEntries(products.map((p) => [p.sku, p]));
-  const usersByName = Object.fromEntries(users.map((u) => [u.name, u]));
-
-  let transferCount = 0;
-  for (const scenario of transferScenarios) {
-    transferCount++;
-    const now = Date.now();
-    const requestedAt = new Date(now - scenario.daysAgo * 24 * 60 * 60 * 1000);
-    const approvedAt = ["approved", "in_transit", "received"].includes(scenario.status)
-      ? new Date(requestedAt.getTime() + 3 * 60 * 60 * 1000) : null;
-    const shippedAt = ["in_transit", "received"].includes(scenario.status)
-      ? new Date((approvedAt?.getTime() || requestedAt.getTime()) + 6 * 60 * 60 * 1000) : null;
-    const receivedAt = scenario.status === "received"
-      ? new Date((shippedAt?.getTime() || requestedAt.getTime()) + 2 * 24 * 60 * 60 * 1000) : null;
-    const estimatedArrival = scenario.status === "in_transit"
-      ? new Date(now + 2 * 24 * 60 * 60 * 1000) : null;
-
-    await prisma.transfer.create({
-      data: {
-        transferNumber: `TRF-${String(1000 + transferCount).padStart(5, "0")}`,
-        fromLocationId: locationsByName[scenario.fromName].id,
-        toLocationId: locationsByName[scenario.toName].id,
-        status: scenario.status,
-        priority: scenario.priority,
-        reason: scenario.reason,
-        trackingNumber: scenario.trackingNumber,
-        shippingMethod: scenario.shippingMethod,
-        estimatedArrival,
-        requestedById: usersByName[scenario.requester].id,
-        approvedById: scenario.approver ? usersByName[scenario.approver].id : null,
-        receivedById: scenario.receiver ? usersByName[scenario.receiver].id : null,
-        requestedAt,
-        approvedAt,
-        shippedAt,
-        receivedAt,
-        items: {
-          create: scenario.items.map((it) => {
-            const item = it as { sku: string; qtyReq: number; qtyShip?: number; qtyRec?: number };
-            return {
-              productId: productsBySku[item.sku].id,
-              quantityRequested: item.qtyReq,
-              quantityShipped: item.qtyShip ?? null,
-              quantityReceived: item.qtyRec ?? null,
-              unitCost: productsBySku[item.sku].costPrice,
-            };
-          }),
-        },
-      },
-    });
-  }
-  console.log(`  Created ${transferCount} transfers`);
-
-  // ─── Alerts ────────────────────────────────────────────────
-  const transfers = await prisma.transfer.findMany({
-    include: { fromLocation: true, toLocation: true, items: true, requestedBy: true },
   });
 
-  const transferAlerts = [];
-  for (const t of transfers) {
-    if (t.status === "requested") {
-      transferAlerts.push({
-        type: "transfer_request",
-        severity: t.priority === "urgent" ? "critical" : "warning",
-        title: `Transfer Requested: ${t.transferNumber}`,
-        message: `${t.requestedBy.name} at ${t.toLocation.name} requested ${t.items.length} item(s) from ${t.fromLocation.name}. Awaiting approval.`,
-        entityType: "transfer",
-        entityId: t.id,
-      });
-    } else if (t.status === "in_transit") {
-      transferAlerts.push({
-        type: "transfer_incoming",
-        severity: "info",
-        title: `Incoming Shipment: ${t.transferNumber}`,
-        message: `${t.items.length} item(s) in transit from ${t.fromLocation.name} → ${t.toLocation.name}${t.trackingNumber ? ` (${t.trackingNumber})` : ""}.`,
-        entityType: "transfer",
-        entityId: t.id,
-      });
-    } else if (t.status === "approved") {
-      transferAlerts.push({
-        type: "transfer_approved",
-        severity: "info",
-        title: `Transfer Approved: ${t.transferNumber}`,
-        message: `Transfer from ${t.fromLocation.name} to ${t.toLocation.name} has been approved and is being prepared for shipment.`,
-        entityType: "transfer",
-        entityId: t.id,
-      });
-    }
-  }
+  const userCarlos = await prisma.user.create({
+    data: {
+      name: "Carlos Mendez",
+      email: "carlos@cellgenic.com",
+      role: "vendedor",
+    },
+  });
 
-  const alerts = [
-    ...transferAlerts,
-    { type: "low_stock", severity: "critical", title: "Out of Stock: CBD Oil Tincture 500mg", message: "CBD Oil Tincture 500mg (CG-CBD-500) is out of stock at Retail Store. Immediate restock required." },
-    { type: "low_stock", severity: "warning", title: "Low Stock: CBD Gummies 30ct", message: "CBD Gummies 30ct has only 5 units remaining at Distribution Center (min: 8)." },
-    { type: "low_stock", severity: "warning", title: "Low Stock: Pet CBD Oil 300mg", message: "Pet CBD Oil 300mg has only 3 units remaining at Main Warehouse (min: 15)." },
-    { type: "overdue_task", severity: "warning", title: "Overdue: Review third-party lab results", message: "Task 'Review third-party lab results for new batch' is 2 days past its due date." },
-    { type: "reorder", severity: "info", title: "Reorder Suggestion: CBD Capsules 30ct", message: "CBD Capsules 30ct inventory has reached the reorder point. Consider placing a purchase order." },
-    { type: "order_status", severity: "info", title: "Order SO-01003 Shipped", message: "Order SO-01003 for Green Valley Health has been shipped via FedEx." },
-    { type: "system", severity: "info", title: "Katana Sync Available", message: "Katana integration is configured. Enable it in Settings to start syncing inventory data." },
-  ];
+  const userLaura = await prisma.user.create({
+    data: {
+      name: "Laura Garcia",
+      email: "laura@cellgenic.com",
+      role: "laboratorio",
+    },
+  });
 
-  await Promise.all(alerts.map((alert) => prisma.alert.create({ data: alert })));
-  console.log(`  Created ${alerts.length} alerts`);
+  const userRoberto = await prisma.user.create({
+    data: {
+      name: "Dr. Roberto Silva",
+      email: "roberto@cellgenic.com",
+      role: "medico",
+    },
+  });
 
-  // ─── Integration Configs ───────────────────────────────────
-  await Promise.all([
-    prisma.integrationConfig.create({
-      data: { provider: "katana", isActive: false, baseUrl: "https://api.katanamrp.com/v1" },
+  console.log("Usuarios creados: 4");
+
+  // ─── Medicos ────────────────────────────────────────────────────
+  const medicoRoberto = await prisma.medico.create({
+    data: {
+      userId: userRoberto.id,
+      nombre: "Dr. Roberto Silva",
+      dni: "28456789",
+      matriculaNacional: "MN-45678",
+      matriculaProvincial: "MP-BA-12345",
+      especialidad: "Traumatologia",
+      institucion: "Hospital Italiano",
+      telefono: "+54 11 4567-8901",
+      whatsapp: "+5411 4567-8901",
+      email: "roberto@cellgenic.com",
+      direccion: "Av. Corrientes 1234",
+      ciudad: "Buenos Aires",
+      provincia: "Buenos Aires",
+      codigoPostal: "C1043",
+      miembroSAMHRE: true,
+      numMiembroSAMHRE: "SAMHRE-001",
+      certificadoISSCA: true,
+      numCertificadoISSCA: "ISSCA-2024-001",
+      workshopCellgenic: true,
+      fechaWorkshop: new Date("2024-06-15"),
+      estado: "validado",
+    },
+  });
+
+  const medicoMaria = await prisma.medico.create({
+    data: {
+      nombre: "Dra. Maria Lopez",
+      dni: "30789456",
+      matriculaNacional: "MN-56789",
+      matriculaProvincial: "MP-CBA-23456",
+      especialidad: "Dermatologia",
+      institucion: "Clinica Dermatologica del Sur",
+      telefono: "+54 351 456-7890",
+      whatsapp: "+54351 456-7890",
+      email: "maria.lopez@clinicadelsur.com",
+      direccion: "Bv. San Juan 890",
+      ciudad: "Cordoba",
+      provincia: "Cordoba",
+      codigoPostal: "X5000",
+      miembroSAMHRE: true,
+      numMiembroSAMHRE: "SAMHRE-042",
+      certificadoISSCA: false,
+      workshopCellgenic: true,
+      fechaWorkshop: new Date("2024-09-20"),
+      estado: "validado",
+    },
+  });
+
+  const medicoJuan = await prisma.medico.create({
+    data: {
+      nombre: "Dr. Juan Perez",
+      dni: "33456123",
+      matriculaNacional: "MN-67890",
+      especialidad: "Medicina Deportiva",
+      institucion: "Centro Deportivo Rosario",
+      telefono: "+54 341 567-8901",
+      whatsapp: "+54341 567-8901",
+      email: "juan.perez@deportivorosario.com",
+      direccion: "Calle Mitre 456",
+      ciudad: "Rosario",
+      provincia: "Santa Fe",
+      codigoPostal: "S2000",
+      miembroSAMHRE: false,
+      certificadoISSCA: false,
+      workshopCellgenic: false,
+      estado: "pendiente",
+    },
+  });
+
+  const medicoAna = await prisma.medico.create({
+    data: {
+      nombre: "Dra. Ana Martinez",
+      dni: "29123456",
+      matriculaNacional: "MN-34567",
+      matriculaProvincial: "MP-MZA-34567",
+      especialidad: "Neurologia",
+      institucion: "Hospital Central de Mendoza",
+      telefono: "+54 261 678-9012",
+      whatsapp: "+54261 678-9012",
+      email: "ana.martinez@hcmendoza.com",
+      direccion: "Av. San Martin 1500",
+      ciudad: "Mendoza",
+      provincia: "Mendoza",
+      codigoPostal: "M5500",
+      miembroSAMHRE: true,
+      numMiembroSAMHRE: "SAMHRE-089",
+      certificadoISSCA: true,
+      numCertificadoISSCA: "ISSCA-2023-055",
+      workshopCellgenic: true,
+      fechaWorkshop: new Date("2023-11-10"),
+      estado: "validado",
+    },
+  });
+
+  const medicoDiego = await prisma.medico.create({
+    data: {
+      nombre: "Dr. Diego Torres",
+      dni: "35678901",
+      matriculaNacional: "MN-78901",
+      especialidad: "Medicina Estetica",
+      institucion: "Torres Estetica Avanzada",
+      telefono: "+54 11 7890-1234",
+      whatsapp: "+5411 7890-1234",
+      email: "diego.torres@torresmed.com",
+      direccion: "Av. Santa Fe 2345",
+      ciudad: "CABA",
+      provincia: "Buenos Aires",
+      codigoPostal: "C1123",
+      miembroSAMHRE: false,
+      certificadoISSCA: false,
+      workshopCellgenic: false,
+      estado: "pendiente",
+    },
+  });
+
+  console.log("Medicos creados: 5");
+
+  // ─── Pacientes ──────────────────────────────────────────────────
+  const pacientes = await Promise.all([
+    prisma.paciente.create({
+      data: {
+        nombre: "Alejandro Fernandez",
+        dni: "20345678",
+        fechaNacimiento: new Date("1960-03-15"),
+        edad: 66,
+        sexo: "masculino",
+        peso: "82",
+        altura: "175",
+        telefono: "+54 11 3456-7890",
+        email: "afernandez@gmail.com",
+        medicoId: medicoRoberto.id,
+      },
     }),
-    prisma.integrationConfig.create({
-      data: { provider: "quickbooks", isActive: false, baseUrl: "https://quickbooks.api.intuit.com/v3" },
+    prisma.paciente.create({
+      data: {
+        nombre: "Gabriela Sosa",
+        dni: "25678901",
+        fechaNacimiento: new Date("1970-07-22"),
+        edad: 55,
+        sexo: "femenino",
+        peso: "65",
+        altura: "163",
+        telefono: "+54 11 4567-8901",
+        email: "gsosa@hotmail.com",
+        medicoId: medicoRoberto.id,
+      },
+    }),
+    prisma.paciente.create({
+      data: {
+        nombre: "Ricardo Gomez",
+        dni: "22456789",
+        fechaNacimiento: new Date("1965-11-08"),
+        edad: 60,
+        sexo: "masculino",
+        peso: "90",
+        altura: "180",
+        telefono: "+54 351 567-8901",
+        email: "rgomez@yahoo.com",
+        medicoId: medicoMaria.id,
+      },
+    }),
+    prisma.paciente.create({
+      data: {
+        nombre: "Lucia Morales",
+        dni: "30123456",
+        fechaNacimiento: new Date("1980-01-25"),
+        edad: 46,
+        sexo: "femenino",
+        peso: "58",
+        altura: "160",
+        telefono: "+54 351 678-9012",
+        email: "lmorales@gmail.com",
+        medicoId: medicoMaria.id,
+      },
+    }),
+    prisma.paciente.create({
+      data: {
+        nombre: "Martin Acosta",
+        dni: "27890123",
+        fechaNacimiento: new Date("1975-05-12"),
+        edad: 51,
+        sexo: "masculino",
+        peso: "78",
+        altura: "172",
+        telefono: "+54 341 789-0123",
+        email: "macosta@gmail.com",
+        medicoId: medicoJuan.id,
+      },
+    }),
+    prisma.paciente.create({
+      data: {
+        nombre: "Valentina Ruiz",
+        dni: "32567890",
+        fechaNacimiento: new Date("1985-09-30"),
+        edad: 40,
+        sexo: "femenino",
+        peso: "62",
+        altura: "168",
+        telefono: "+54 261 890-1234",
+        email: "vruiz@outlook.com",
+        medicoId: medicoAna.id,
+      },
+    }),
+    prisma.paciente.create({
+      data: {
+        nombre: "Fernando Castro",
+        dni: "24789012",
+        fechaNacimiento: new Date("1968-12-05"),
+        edad: 57,
+        sexo: "masculino",
+        peso: "85",
+        altura: "178",
+        telefono: "+54 261 901-2345",
+        email: "fcastro@gmail.com",
+        medicoId: medicoAna.id,
+      },
+    }),
+    prisma.paciente.create({
+      data: {
+        nombre: "Camila Herrera",
+        dni: "34901234",
+        fechaNacimiento: new Date("1993-04-18"),
+        edad: 33,
+        sexo: "femenino",
+        peso: "55",
+        altura: "165",
+        telefono: "+54 11 0123-4567",
+        email: "cherrera@gmail.com",
+        medicoId: medicoDiego.id,
+      },
     }),
   ]);
-  console.log("  Created integration configs");
 
-  console.log("\nSeed complete!");
+  console.log("Pacientes creados:", pacientes.length);
+
+  // ─── Productos ──────────────────────────────────────────────────
+  const productoEXO = await prisma.producto.create({
+    data: {
+      sku: "EXO-001",
+      nombre: "Exosomas Mesenquimales 50M",
+      descripcion: "Exosomas derivados de celulas madre mesenquimales, concentracion 50 millones",
+      categoria: "exosomas",
+      presentacion: "Vial 1ml",
+      precioUnitario: 450000,
+      costoUnitario: 180000,
+      requiereFrio: true,
+    },
+  });
+
+  const productoCM = await prisma.producto.create({
+    data: {
+      sku: "CM-001",
+      nombre: "Celulas Madre Adiposas 10M",
+      descripcion: "Celulas madre derivadas de tejido adiposo, concentracion 10 millones",
+      categoria: "celulas_madre",
+      presentacion: "Vial 2ml",
+      precioUnitario: 680000,
+      costoUnitario: 280000,
+      requiereFrio: true,
+    },
+  });
+
+  const productoFIB = await prisma.producto.create({
+    data: {
+      sku: "FIB-001",
+      nombre: "Fibroblastos Dermicos 5M",
+      descripcion: "Fibroblastos dermicos autologos, concentracion 5 millones",
+      categoria: "fibroblastos",
+      presentacion: "Vial 1ml",
+      precioUnitario: 320000,
+      costoUnitario: 130000,
+      requiereFrio: true,
+    },
+  });
+
+  const productoPEP = await prisma.producto.create({
+    data: {
+      sku: "PEP-001",
+      nombre: "Peptidos Regenerativos",
+      descripcion: "Cocktail de peptidos bioactivos para regeneracion tisular",
+      categoria: "peptidos",
+      presentacion: "Ampolla 5ml",
+      precioUnitario: 180000,
+      costoUnitario: 55000,
+      requiereFrio: false,
+    },
+  });
+
+  const productoFP = await prisma.producto.create({
+    data: {
+      sku: "FP-001",
+      nombre: "Celulas de Foliculo Piloso",
+      descripcion: "Celulas progenitoras de foliculo piloso para regeneracion capilar",
+      categoria: "foliculo_piloso",
+      presentacion: "Vial 1ml",
+      precioUnitario: 520000,
+      costoUnitario: 210000,
+      requiereFrio: true,
+    },
+  });
+
+  const productoLP = await prisma.producto.create({
+    data: {
+      sku: "LP-001",
+      nombre: "Lisado Plaquetario Concentrado",
+      descripcion: "Lisado plaquetario concentrado para estimulacion de crecimiento celular",
+      categoria: "lisado_plaquetario",
+      presentacion: "Ampolla 10ml",
+      precioUnitario: 150000,
+      costoUnitario: 45000,
+      requiereFrio: true,
+    },
+  });
+
+  console.log("Productos creados: 6");
+
+  // ─── Inventario (2 lotes por producto) ──────────────────────────
+  await Promise.all([
+    // EXO-001
+    prisma.inventario.create({
+      data: {
+        productoId: productoEXO.id,
+        lote: "EXO-L2026-001",
+        cantidad: 25,
+        fechaVencimiento: new Date("2026-12-15"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 5,
+      },
+    }),
+    prisma.inventario.create({
+      data: {
+        productoId: productoEXO.id,
+        lote: "EXO-L2026-002",
+        cantidad: 3,
+        fechaVencimiento: new Date("2026-09-30"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 5,
+      },
+    }),
+    // CM-001
+    prisma.inventario.create({
+      data: {
+        productoId: productoCM.id,
+        lote: "CM-L2026-001",
+        cantidad: 12,
+        fechaVencimiento: new Date("2026-11-20"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 3,
+      },
+    }),
+    prisma.inventario.create({
+      data: {
+        productoId: productoCM.id,
+        lote: "CM-L2026-002",
+        cantidad: 2,
+        fechaVencimiento: new Date("2027-03-15"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 3,
+      },
+    }),
+    // FIB-001
+    prisma.inventario.create({
+      data: {
+        productoId: productoFIB.id,
+        lote: "FIB-L2026-001",
+        cantidad: 18,
+        fechaVencimiento: new Date("2027-01-10"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 5,
+      },
+    }),
+    prisma.inventario.create({
+      data: {
+        productoId: productoFIB.id,
+        lote: "FIB-L2026-002",
+        cantidad: 8,
+        fechaVencimiento: new Date("2027-04-25"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 5,
+      },
+    }),
+    // PEP-001
+    prisma.inventario.create({
+      data: {
+        productoId: productoPEP.id,
+        lote: "PEP-L2026-001",
+        cantidad: 40,
+        fechaVencimiento: new Date("2027-06-30"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "seco",
+        umbralMinimo: 10,
+      },
+    }),
+    prisma.inventario.create({
+      data: {
+        productoId: productoPEP.id,
+        lote: "PEP-L2026-002",
+        cantidad: 15,
+        fechaVencimiento: new Date("2027-08-15"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "seco",
+        umbralMinimo: 10,
+      },
+    }),
+    // FP-001
+    prisma.inventario.create({
+      data: {
+        productoId: productoFP.id,
+        lote: "FP-L2026-001",
+        cantidad: 6,
+        fechaVencimiento: new Date("2026-10-20"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 3,
+      },
+    }),
+    prisma.inventario.create({
+      data: {
+        productoId: productoFP.id,
+        lote: "FP-L2026-002",
+        cantidad: 1,
+        fechaVencimiento: new Date("2026-08-10"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 3,
+      },
+    }),
+    // LP-001
+    prisma.inventario.create({
+      data: {
+        productoId: productoLP.id,
+        lote: "LP-L2026-001",
+        cantidad: 30,
+        fechaVencimiento: new Date("2026-12-01"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 8,
+      },
+    }),
+    prisma.inventario.create({
+      data: {
+        productoId: productoLP.id,
+        lote: "LP-L2026-002",
+        cantidad: 4,
+        fechaVencimiento: new Date("2027-02-28"),
+        ubicacion: "Laboratorio Principal",
+        tipoAlmacenamiento: "frio",
+        umbralMinimo: 8,
+      },
+    }),
+  ]);
+
+  console.log("Inventario creado: 12 registros");
+
+  // ─── Solicitudes ────────────────────────────────────────────────
+  const sol1 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00001",
+      medicoId: medicoRoberto.id,
+      pacienteId: pacientes[0].id,
+      estado: "cerrado",
+      diagnosticoPrincipal: "Artrosis de rodilla grado III",
+      objetivoTerapeutico: "regeneracion_articular",
+      categoriaProducto: "exosomas",
+      nombreProducto: "Exosomas Mesenquimales 50M",
+      cantidadSolicitada: 2,
+      numeroViales: 2,
+      viaAdministracion: "intraarticular",
+      numSesiones: 3,
+      fechaAplicacion: new Date("2026-03-10"),
+      lugarAplicacion: "Hospital Italiano - Buenos Aires",
+      nombreReceptor: "Dr. Roberto Silva",
+      telefonoReceptor: "+54 11 4567-8901",
+      institucionEntrega: "Hospital Italiano",
+      direccionEntrega: "Av. Corrientes 1234",
+      ciudadEntrega: "Buenos Aires",
+      provinciaEntrega: "Buenos Aires",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: true,
+      ordenMedicaRecibida: true,
+      documentacionCompleta: true,
+      montoTotal: 900000,
+      estadoPago: "pagado",
+      fechaPago: new Date("2026-03-05"),
+      createdById: userCarlos.id,
+      validadoPorId: userSarah.id,
+      fechaValidacion: new Date("2026-03-06"),
+      createdAt: new Date("2026-03-01"),
+    },
+  });
+
+  const sol2 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00002",
+      medicoId: medicoMaria.id,
+      pacienteId: pacientes[2].id,
+      estado: "entregado",
+      diagnosticoPrincipal: "Envejecimiento cutaneo avanzado",
+      objetivoTerapeutico: "rejuvenecimiento_facial",
+      categoriaProducto: "fibroblastos",
+      nombreProducto: "Fibroblastos Dermicos 5M",
+      cantidadSolicitada: 3,
+      numeroViales: 3,
+      viaAdministracion: "intradermica",
+      numSesiones: 4,
+      fechaAplicacion: new Date("2026-04-15"),
+      lugarAplicacion: "Clinica Dermatologica del Sur - Cordoba",
+      nombreReceptor: "Dra. Maria Lopez",
+      telefonoReceptor: "+54 351 456-7890",
+      institucionEntrega: "Clinica Dermatologica del Sur",
+      direccionEntrega: "Bv. San Juan 890",
+      ciudadEntrega: "Cordoba",
+      provinciaEntrega: "Cordoba",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: true,
+      ordenMedicaRecibida: true,
+      documentacionCompleta: true,
+      montoTotal: 960000,
+      estadoPago: "pagado",
+      fechaPago: new Date("2026-04-10"),
+      createdById: userCarlos.id,
+      validadoPorId: userSarah.id,
+      fechaValidacion: new Date("2026-04-08"),
+      createdAt: new Date("2026-04-05"),
+    },
+  });
+
+  const sol3 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00003",
+      medicoId: medicoRoberto.id,
+      pacienteId: pacientes[1].id,
+      estado: "despachado",
+      diagnosticoPrincipal: "Tendinopatia cronica del manguito rotador",
+      objetivoTerapeutico: "regeneracion_tendinosa",
+      categoriaProducto: "celulas_madre",
+      nombreProducto: "Celulas Madre Adiposas 10M",
+      cantidadSolicitada: 1,
+      numeroViales: 1,
+      viaAdministracion: "intraarticular",
+      numSesiones: 2,
+      fechaAplicacion: new Date("2026-05-20"),
+      lugarAplicacion: "Hospital Italiano - Buenos Aires",
+      nombreReceptor: "Dr. Roberto Silva",
+      telefonoReceptor: "+54 11 4567-8901",
+      institucionEntrega: "Hospital Italiano",
+      direccionEntrega: "Av. Corrientes 1234",
+      ciudadEntrega: "Buenos Aires",
+      provinciaEntrega: "Buenos Aires",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: true,
+      ordenMedicaRecibida: true,
+      documentacionCompleta: true,
+      montoTotal: 680000,
+      estadoPago: "pagado",
+      fechaPago: new Date("2026-05-15"),
+      createdById: userSarah.id,
+      validadoPorId: userSarah.id,
+      fechaValidacion: new Date("2026-05-12"),
+      createdAt: new Date("2026-05-10"),
+    },
+  });
+
+  const sol4 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00004",
+      medicoId: medicoAna.id,
+      pacienteId: pacientes[5].id,
+      estado: "en_preparacion",
+      diagnosticoPrincipal: "Neuropatia periferica post-traumatica",
+      objetivoTerapeutico: "regeneracion_nerviosa",
+      categoriaProducto: "exosomas",
+      nombreProducto: "Exosomas Mesenquimales 50M",
+      cantidadSolicitada: 4,
+      numeroViales: 4,
+      viaAdministracion: "intravenosa",
+      numSesiones: 6,
+      fechaAplicacion: new Date("2026-07-01"),
+      lugarAplicacion: "Hospital Central de Mendoza",
+      nombreReceptor: "Dra. Ana Martinez",
+      telefonoReceptor: "+54 261 678-9012",
+      institucionEntrega: "Hospital Central de Mendoza",
+      direccionEntrega: "Av. San Martin 1500",
+      ciudadEntrega: "Mendoza",
+      provinciaEntrega: "Mendoza",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: true,
+      ordenMedicaRecibida: true,
+      documentacionCompleta: true,
+      montoTotal: 1800000,
+      estadoPago: "pagado",
+      fechaPago: new Date("2026-06-10"),
+      createdById: userCarlos.id,
+      validadoPorId: userSarah.id,
+      fechaValidacion: new Date("2026-06-08"),
+      createdAt: new Date("2026-06-05"),
+    },
+  });
+
+  const sol5 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00005",
+      medicoId: medicoMaria.id,
+      pacienteId: pacientes[3].id,
+      estado: "aprobado",
+      diagnosticoPrincipal: "Alopecia androgenica",
+      objetivoTerapeutico: "regeneracion_capilar",
+      categoriaProducto: "foliculo_piloso",
+      nombreProducto: "Celulas de Foliculo Piloso",
+      cantidadSolicitada: 2,
+      numeroViales: 2,
+      viaAdministracion: "intradermica",
+      numSesiones: 5,
+      fechaAplicacion: new Date("2026-07-15"),
+      lugarAplicacion: "Clinica Dermatologica del Sur - Cordoba",
+      nombreReceptor: "Dra. Maria Lopez",
+      telefonoReceptor: "+54 351 456-7890",
+      institucionEntrega: "Clinica Dermatologica del Sur",
+      direccionEntrega: "Bv. San Juan 890",
+      ciudadEntrega: "Cordoba",
+      provinciaEntrega: "Cordoba",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: true,
+      ordenMedicaRecibida: false,
+      documentacionCompleta: false,
+      montoTotal: 1040000,
+      estadoPago: "pendiente",
+      createdById: userCarlos.id,
+      validadoPorId: userSarah.id,
+      fechaValidacion: new Date("2026-06-14"),
+      createdAt: new Date("2026-06-12"),
+    },
+  });
+
+  await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00006",
+      medicoId: medicoAna.id,
+      pacienteId: pacientes[6].id,
+      estado: "validacion_documental",
+      diagnosticoPrincipal: "Dolor cronico lumbar",
+      objetivoTerapeutico: "dolor_cronico",
+      categoriaProducto: "peptidos",
+      nombreProducto: "Peptidos Regenerativos",
+      cantidadSolicitada: 5,
+      numeroViales: 5,
+      viaAdministracion: "intramuscular",
+      numSesiones: 8,
+      fechaAplicacion: new Date("2026-08-01"),
+      lugarAplicacion: "Hospital Central de Mendoza",
+      nombreReceptor: "Dra. Ana Martinez",
+      telefonoReceptor: "+54 261 678-9012",
+      institucionEntrega: "Hospital Central de Mendoza",
+      direccionEntrega: "Av. San Martin 1500",
+      ciudadEntrega: "Mendoza",
+      provinciaEntrega: "Mendoza",
+      tipoEntrega: "temperatura_ambiente",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: false,
+      ordenMedicaRecibida: false,
+      documentacionCompleta: false,
+      montoTotal: 900000,
+      estadoPago: "pendiente",
+      createdById: userSarah.id,
+      createdAt: new Date("2026-06-14"),
+    },
+  });
+
+  const sol7 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00007",
+      medicoId: medicoJuan.id,
+      pacienteId: pacientes[4].id,
+      estado: "pendiente",
+      diagnosticoPrincipal: "Lesion de ligamento cruzado anterior",
+      objetivoTerapeutico: "regeneracion_articular",
+      categoriaProducto: "celulas_madre",
+      nombreProducto: "Celulas Madre Adiposas 10M",
+      cantidadSolicitada: 2,
+      numeroViales: 2,
+      viaAdministracion: "intraarticular",
+      numSesiones: 3,
+      fechaAplicacion: new Date("2026-08-15"),
+      lugarAplicacion: "Centro Deportivo Rosario",
+      nombreReceptor: "Dr. Juan Perez",
+      telefonoReceptor: "+54 341 567-8901",
+      institucionEntrega: "Centro Deportivo Rosario",
+      direccionEntrega: "Calle Mitre 456",
+      ciudadEntrega: "Rosario",
+      provinciaEntrega: "Santa Fe",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: false,
+      historiaClinicaRecibida: false,
+      consentimientoRecibido: false,
+      ordenMedicaRecibida: false,
+      documentacionCompleta: false,
+      montoTotal: 1360000,
+      estadoPago: "pendiente",
+      createdById: userCarlos.id,
+      createdAt: new Date("2026-06-16"),
+    },
+  });
+
+  const sol8 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00008",
+      medicoId: medicoDiego.id,
+      pacienteId: pacientes[7].id,
+      estado: "pendiente",
+      diagnosticoPrincipal: "Cicatrices de acne",
+      objetivoTerapeutico: "rejuvenecimiento_facial",
+      categoriaProducto: "fibroblastos",
+      nombreProducto: "Fibroblastos Dermicos 5M",
+      cantidadSolicitada: 2,
+      numeroViales: 2,
+      viaAdministracion: "intradermica",
+      numSesiones: 4,
+      fechaAplicacion: new Date("2026-09-01"),
+      lugarAplicacion: "Torres Estetica Avanzada - CABA",
+      nombreReceptor: "Dr. Diego Torres",
+      telefonoReceptor: "+54 11 7890-1234",
+      institucionEntrega: "Torres Estetica Avanzada",
+      direccionEntrega: "Av. Santa Fe 2345",
+      ciudadEntrega: "CABA",
+      provinciaEntrega: "Buenos Aires",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: false,
+      historiaClinicaRecibida: false,
+      consentimientoRecibido: false,
+      ordenMedicaRecibida: false,
+      documentacionCompleta: false,
+      montoTotal: 640000,
+      estadoPago: "pendiente",
+      createdById: userCarlos.id,
+      createdAt: new Date("2026-06-17"),
+    },
+  });
+
+  const sol9 = await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00009",
+      medicoId: medicoRoberto.id,
+      pacienteId: pacientes[0].id,
+      estado: "en_preparacion",
+      diagnosticoPrincipal: "Condropatia rotuliana bilateral",
+      objetivoTerapeutico: "regeneracion_articular",
+      categoriaProducto: "lisado_plaquetario",
+      nombreProducto: "Lisado Plaquetario Concentrado",
+      cantidadSolicitada: 3,
+      numeroViales: 3,
+      viaAdministracion: "intraarticular",
+      numSesiones: 4,
+      fechaAplicacion: new Date("2026-07-10"),
+      lugarAplicacion: "Hospital Italiano - Buenos Aires",
+      nombreReceptor: "Dr. Roberto Silva",
+      telefonoReceptor: "+54 11 4567-8901",
+      institucionEntrega: "Hospital Italiano",
+      direccionEntrega: "Av. Corrientes 1234",
+      ciudadEntrega: "Buenos Aires",
+      provinciaEntrega: "Buenos Aires",
+      tipoEntrega: "cadena_frio",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: true,
+      ordenMedicaRecibida: true,
+      documentacionCompleta: true,
+      montoTotal: 450000,
+      estadoPago: "pagado",
+      fechaPago: new Date("2026-06-12"),
+      createdById: userSarah.id,
+      validadoPorId: userSarah.id,
+      fechaValidacion: new Date("2026-06-10"),
+      createdAt: new Date("2026-06-08"),
+    },
+  });
+
+  await prisma.solicitud.create({
+    data: {
+      numero: "SOL-2026-00010",
+      medicoId: medicoMaria.id,
+      pacienteId: pacientes[2].id,
+      estado: "aprobado",
+      diagnosticoPrincipal: "Rejuvenecimiento de manos",
+      objetivoTerapeutico: "rejuvenecimiento",
+      categoriaProducto: "peptidos",
+      nombreProducto: "Peptidos Regenerativos",
+      cantidadSolicitada: 2,
+      numeroViales: 2,
+      viaAdministracion: "intradermica",
+      numSesiones: 3,
+      fechaAplicacion: new Date("2026-07-20"),
+      lugarAplicacion: "Clinica Dermatologica del Sur - Cordoba",
+      nombreReceptor: "Dra. Maria Lopez",
+      telefonoReceptor: "+54 351 456-7890",
+      institucionEntrega: "Clinica Dermatologica del Sur",
+      direccionEntrega: "Bv. San Juan 890",
+      ciudadEntrega: "Cordoba",
+      provinciaEntrega: "Cordoba",
+      tipoEntrega: "temperatura_ambiente",
+      medicoRegistrado: true,
+      medicoValidado: true,
+      historiaClinicaRecibida: true,
+      consentimientoRecibido: true,
+      ordenMedicaRecibida: true,
+      documentacionCompleta: true,
+      montoTotal: 360000,
+      estadoPago: "pendiente",
+      createdById: userCarlos.id,
+      validadoPorId: userSarah.id,
+      fechaValidacion: new Date("2026-06-16"),
+      createdAt: new Date("2026-06-15"),
+    },
+  });
+
+  console.log("Solicitudes creadas: 10");
+
+  // ─── Fulfillment (for en_preparacion, despachado, entregado, cerrado) ──
+  await prisma.fulfillment.create({
+    data: {
+      solicitudId: sol1.id,
+      loteAsignado: "EXO-L2026-001",
+      productoReservado: "Exosomas Mesenquimales 50M",
+      cantidad: 2,
+      fechaVencimiento: new Date("2026-12-15"),
+      ubicacion: "Laboratorio Principal",
+      fechaPreparacion: new Date("2026-03-07"),
+      responsableId: userLaura.id,
+      fechaDespacho: new Date("2026-03-08"),
+      metodoEnvio: "transporte_especializado",
+      tracking: "TE-2026-00001",
+      temperaturaEnvio: "-20C",
+      estado: "entregado",
+    },
+  });
+
+  await prisma.fulfillment.create({
+    data: {
+      solicitudId: sol2.id,
+      loteAsignado: "FIB-L2026-001",
+      productoReservado: "Fibroblastos Dermicos 5M",
+      cantidad: 3,
+      fechaVencimiento: new Date("2027-01-10"),
+      ubicacion: "Laboratorio Principal",
+      fechaPreparacion: new Date("2026-04-12"),
+      responsableId: userLaura.id,
+      fechaDespacho: new Date("2026-04-13"),
+      metodoEnvio: "andreani",
+      tracking: "AND-9876543210",
+      temperaturaEnvio: "-20C",
+      estado: "entregado",
+    },
+  });
+
+  await prisma.fulfillment.create({
+    data: {
+      solicitudId: sol3.id,
+      loteAsignado: "CM-L2026-001",
+      productoReservado: "Celulas Madre Adiposas 10M",
+      cantidad: 1,
+      fechaVencimiento: new Date("2026-11-20"),
+      ubicacion: "Laboratorio Principal",
+      fechaPreparacion: new Date("2026-05-16"),
+      responsableId: userLaura.id,
+      fechaDespacho: new Date("2026-05-18"),
+      metodoEnvio: "moto",
+      tracking: "MOTO-2026-00003",
+      temperaturaEnvio: "-20C",
+      estado: "despachado",
+    },
+  });
+
+  await prisma.fulfillment.create({
+    data: {
+      solicitudId: sol4.id,
+      loteAsignado: "EXO-L2026-001",
+      productoReservado: "Exosomas Mesenquimales 50M",
+      cantidad: 4,
+      fechaVencimiento: new Date("2026-12-15"),
+      ubicacion: "Laboratorio Principal",
+      fechaPreparacion: new Date("2026-06-18"),
+      responsableId: userLaura.id,
+      estado: "preparando",
+    },
+  });
+
+  await prisma.fulfillment.create({
+    data: {
+      solicitudId: sol9.id,
+      loteAsignado: "LP-L2026-001",
+      productoReservado: "Lisado Plaquetario Concentrado",
+      cantidad: 3,
+      fechaVencimiento: new Date("2026-12-01"),
+      ubicacion: "Laboratorio Principal",
+      fechaPreparacion: new Date("2026-06-15"),
+      responsableId: userLaura.id,
+      estado: "preparando",
+    },
+  });
+
+  console.log("Fulfillment creados: 5");
+
+  // ─── EvidenciaEntrega (for entregado and cerrado) ───────────────
+  await prisma.evidenciaEntrega.create({
+    data: {
+      solicitudId: sol1.id,
+      nombreReceptor: "Dr. Roberto Silva",
+      dniReceptor: "28456789",
+      fechaHoraEntrega: new Date("2026-03-09T10:30:00"),
+      observaciones: "Entregado en consultorio, cadena de frio verificada",
+      estado: "confirmada",
+      creadoPorId: userCarlos.id,
+    },
+  });
+
+  await prisma.evidenciaEntrega.create({
+    data: {
+      solicitudId: sol2.id,
+      nombreReceptor: "Dra. Maria Lopez",
+      dniReceptor: "30789456",
+      fechaHoraEntrega: new Date("2026-04-14T14:00:00"),
+      observaciones: "Recibido en clinica, temperatura correcta",
+      estado: "confirmada",
+      creadoPorId: userCarlos.id,
+    },
+  });
+
+  console.log("Evidencias de entrega creadas: 2");
+
+  // ─── Pagos ──────────────────────────────────────────────────────
+  await Promise.all([
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00001",
+        monto: 900000,
+        metodo: "transferencia",
+        comprobante: "TRANSF-2026-0001",
+        estado: "confirmado",
+        fechaPago: new Date("2026-03-05"),
+      },
+    }),
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00002",
+        monto: 960000,
+        metodo: "quickbooks",
+        comprobante: "QB-INV-2026-0042",
+        estado: "confirmado",
+        fechaPago: new Date("2026-04-10"),
+      },
+    }),
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00003",
+        monto: 680000,
+        metodo: "transferencia",
+        comprobante: "TRANSF-2026-0015",
+        estado: "confirmado",
+        fechaPago: new Date("2026-05-15"),
+      },
+    }),
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00004",
+        monto: 1800000,
+        metodo: "efectivo",
+        comprobante: "REC-2026-0008",
+        estado: "confirmado",
+        fechaPago: new Date("2026-06-10"),
+      },
+    }),
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00009",
+        monto: 450000,
+        metodo: "transferencia",
+        comprobante: "TRANSF-2026-0022",
+        estado: "confirmado",
+        fechaPago: new Date("2026-06-12"),
+      },
+    }),
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00005",
+        monto: 1040000,
+        metodo: "transferencia",
+        estado: "pendiente",
+      },
+    }),
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00006",
+        monto: 900000,
+        metodo: "quickbooks",
+        estado: "pendiente",
+      },
+    }),
+    prisma.pago.create({
+      data: {
+        solicitudNum: "SOL-2026-00010",
+        monto: 360000,
+        metodo: "efectivo",
+        estado: "pendiente",
+      },
+    }),
+  ]);
+
+  console.log("Pagos creados: 8");
+
+  // ─── Alertas ────────────────────────────────────────────────────
+  await Promise.all([
+    // 2 critical
+    prisma.alert.create({
+      data: {
+        type: "stock_bajo",
+        severity: "critical",
+        title: "Stock critico: Celulas de Foliculo Piloso",
+        message:
+          "El lote FP-L2026-002 tiene solo 1 unidad disponible. Se requiere reposicion urgente para cubrir solicitudes pendientes.",
+        entityType: "inventario",
+        entityId: "FP-L2026-002",
+        isRead: false,
+        isDismissed: false,
+        createdAt: new Date("2026-06-18T08:00:00"),
+      },
+    }),
+    prisma.alert.create({
+      data: {
+        type: "documento_faltante",
+        severity: "critical",
+        title: "Documentacion incompleta: SOL-2026-00008",
+        message:
+          "La solicitud SOL-2026-00008 del Dr. Diego Torres no tiene historia clinica, consentimiento ni orden medica. El medico aun no esta validado.",
+        entityType: "solicitud",
+        entityId: sol8.id,
+        isRead: false,
+        isDismissed: false,
+        createdAt: new Date("2026-06-17T15:30:00"),
+      },
+    }),
+    // 2 warning
+    prisma.alert.create({
+      data: {
+        type: "solicitud_pendiente",
+        severity: "warning",
+        title: "Solicitud pendiente de revision: SOL-2026-00007",
+        message:
+          "La solicitud SOL-2026-00007 del Dr. Juan Perez lleva 2 dias en estado pendiente sin asignar validador.",
+        entityType: "solicitud",
+        entityId: sol7.id,
+        isRead: false,
+        isDismissed: false,
+        createdAt: new Date("2026-06-18T09:00:00"),
+      },
+    }),
+    prisma.alert.create({
+      data: {
+        type: "vencimiento",
+        severity: "warning",
+        title: "Vencimiento proximo: Lote FP-L2026-002",
+        message:
+          "El lote FP-L2026-002 de Celulas de Foliculo Piloso vence el 10/08/2026. Quedan menos de 2 meses.",
+        entityType: "inventario",
+        entityId: "FP-L2026-002",
+        isRead: false,
+        isDismissed: false,
+        createdAt: new Date("2026-06-18T07:00:00"),
+      },
+    }),
+    // 2 info
+    prisma.alert.create({
+      data: {
+        type: "nuevo_medico",
+        severity: "info",
+        title: "Nuevo medico registrado: Dr. Diego Torres",
+        message:
+          "Dr. Diego Torres (Medicina Estetica, CABA) se registro en la plataforma y esta pendiente de validacion.",
+        entityType: "medico",
+        entityId: medicoDiego.id,
+        isRead: false,
+        isDismissed: false,
+        createdAt: new Date("2026-06-17T10:00:00"),
+      },
+    }),
+    prisma.alert.create({
+      data: {
+        type: "pago_confirmado",
+        severity: "info",
+        title: "Pago confirmado: SOL-2026-00009",
+        message:
+          "Se confirmo el pago de $450.000 por transferencia para la solicitud SOL-2026-00009 del Dr. Roberto Silva.",
+        entityType: "solicitud",
+        entityId: sol9.id,
+        isRead: true,
+        isDismissed: false,
+        createdAt: new Date("2026-06-12T16:00:00"),
+      },
+    }),
+  ]);
+
+  console.log("Alertas creadas: 6");
+
+  console.log("\nSeed completado exitosamente!");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("Error en seed:", e);
     process.exit(1);
   })
   .finally(async () => {

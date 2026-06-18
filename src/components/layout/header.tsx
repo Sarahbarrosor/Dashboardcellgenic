@@ -5,25 +5,25 @@ import { Bell, Search } from "lucide-react";
 
 const pageTitles: Record<string, string> = {
   "/": "Dashboard",
-  "/inventory": "Inventory Management",
-  "/products": "Product Database",
-  "/transfers": "Location Transfers",
-  "/locations": "Locations",
-  "/sales": "Sales & Insights",
-  "/tasks": "Task Management",
-  "/orders": "Order Management",
-  "/alerts": "Alerts Center",
-  "/settings": "Settings & Integrations",
+  "/medicos": "Médicos / Clientes",
+  "/pacientes": "Pacientes",
+  "/solicitudes": "Solicitudes",
+  "/solicitudes/nueva": "Nueva Solicitud",
+  "/inventario": "Inventario",
+  "/pagos": "Pagos / Facturación",
+  "/fulfillment": "Fulfillment / Despacho",
+  "/evidencia": "Evidencia de Entrega",
+  "/alertas": "Centro de Alertas",
 };
 
 export function Header() {
   const pathname = usePathname();
-  const title = pageTitles[pathname] || "Cellgenic Operations";
+  const title = pageTitles[pathname] || "Cellgenic Argentina";
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6">
       <div className="flex items-center gap-4">
-        <div className="lg:hidden w-10" /> {/* Spacer for mobile menu button */}
+        <div className="lg:hidden w-10" />
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
       </div>
 
@@ -32,7 +32,7 @@ export function Header() {
           <Search className="h-4 w-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Buscar..."
             className="bg-transparent text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none w-48"
           />
         </div>

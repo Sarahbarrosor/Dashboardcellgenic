@@ -5,128 +5,163 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
     const [
-      totalProducts,
-      inventoryData,
-      pendingOrders,
-      pendingTasks,
-      recentSales,
-      previousMonthSales,
-      topProductSales,
-      recentAlerts,
+      totalSolicitudes,
+      solicitudesPendientes,
+      solicitudesEnProceso,
+      solicitudesEntregadas,
+      medicosValidados,
+      pagosPendientes,
+      solicitudesPorEstado,
+      solicitudesRecientes,
+      alertasRecientes,
     ] = await Promise.all([
-      prisma.product.count({ where: { isActive: true } }),
-      prisma.inventory.findMany({ include: { product: true } }),
-      prisma.order.count({ where: { status: { in: ["pending", "confirmed", "processing"] } } }),
-      prisma.task.count({ where: { status: { in: ["todo", "in_progress"] } } }),
-      prisma.saleRecord.findMany({ where: { saleDate: { gte: thirtyDaysAgo } } }),
-      prisma.saleRecord.findMany({
-        where: {
-          saleDate: {
-            gte: new Date(thirtyDaysAgo.getTime() - 30 * 24 * 60 * 60 * 1000),
-            lt: thirtyDaysAgo,
+      prisma.solicitud.count().catch(() => 0),
+      prisma.solicitud.count({ where: { estado: "pendiente" } }).catch(() => 0),
+      prisma.solicitud
+        .count({
+          where: {
+            estado: {
+              in: ["validacion_documental", "aprobado", "en_preparacion", "despachado"],
+            },
           },
-        },
-      }),
-      prisma.saleRecord.groupBy({
-        by: ["productId"],
-        _sum: { quantity: true, totalAmount: true },
-        orderBy: { _sum: { totalAmount: "desc" } },
-        take: 5,
-      }),
-      prisma.alert.findMany({
-        where: { isDismissed: false },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      }),
+        })
+        .catch(() => 0),
+      prisma.solicitud.count({ where: { estado: "entregado" } }).catch(() => 0),
+      prisma.medico.count({ where: { estado: "validado" } }).catch(() => 0),
+      prisma.pago.count({ where: { estado: "pendiente" } }).catch(() => 0),
+      prisma.solicitud
+        .groupBy({
+          by: ["estado"],
+          _count: { estado: true },
+        })
+        .catch(() => []),
+      prisma.solicitud
+        .findMany({
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          include: {
+            medico: { select: { nombre: true } },
+            paciente: { select: { nombre: true } },
+          },
+        })
+        .catch(() => []),
+      prisma.alert
+        .findMany({
+          where: { isDismissed: false },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        })
+        .catch(() => []),
     ]);
 
-    // Calculate inventory metrics
-    const totalInventoryValue = inventoryData.reduce(
-      (sum, inv) => sum + inv.quantity * inv.product.costPrice,
-      0
-    );
-    const lowStockCount = inventoryData.filter(
-      (inv) => inv.quantity <= inv.minimumThreshold && inv.quantity > 0
-    ).length;
-    const outOfStockCount = inventoryData.filter((inv) => inv.quantity === 0).length;
-
-    // Revenue calculations
-    const monthlyRevenue = recentSales.reduce((sum, s) => sum + s.totalAmount, 0);
-    const previousRevenue = previousMonthSales.reduce((sum, s) => sum + s.totalAmount, 0);
-    const revenueChange = previousRevenue > 0
-      ? ((monthlyRevenue - previousRevenue) / previousRevenue) * 100
-      : 0;
-
-    // Top products with details
-    const topProductIds = topProductSales.map((tp) => tp.productId);
-    const topProductDetails = await prisma.product.findMany({
-      where: { id: { in: topProductIds } },
-    });
-    const topProducts = topProductSales.map((tp) => {
-      const product = topProductDetails.find((p) => p.id === tp.productId);
-      return {
-        id: tp.productId,
-        name: product?.name || "Unknown",
-        sku: product?.sku || "",
-        totalSold: tp._sum.quantity || 0,
-        revenue: tp._sum.totalAmount || 0,
-      };
-    });
-
-    // Sales trend (last 30 days, grouped by day)
-    const salesByDay = new Map<string, { revenue: number; orders: number }>();
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const key = date.toISOString().split("T")[0];
-      salesByDay.set(key, { revenue: 0, orders: 0 });
-    }
-    for (const sale of recentSales) {
-      const key = new Date(sale.saleDate).toISOString().split("T")[0];
-      const entry = salesByDay.get(key);
-      if (entry) {
-        entry.revenue += sale.totalAmount;
-        entry.orders += 1;
-      }
-    }
-    const salesTrend = Array.from(salesByDay.entries()).map(([date, data]) => ({
-      date,
-      revenue: Math.round(data.revenue * 100) / 100,
-      orders: data.orders,
+    const estadosData = (
+      solicitudesPorEstado as { estado: string; _count: { estado: number } }[]
+    ).map((item) => ({
+      estado: item.estado,
+      count: item._count.estado,
     }));
 
-    // Inventory by location
-    const locationMap = new Map<string, { totalItems: number; totalValue: number; lowStockItems: number }>();
-    for (const inv of inventoryData) {
-      const loc = locationMap.get(inv.location) || { totalItems: 0, totalValue: 0, lowStockItems: 0 };
-      loc.totalItems += inv.quantity;
-      loc.totalValue += inv.quantity * inv.product.costPrice;
-      if (inv.quantity <= inv.minimumThreshold) loc.lowStockItems++;
-      locationMap.set(inv.location, loc);
-    }
-    const inventoryByLocation = Array.from(locationMap.entries()).map(([location, data]) => ({
-      location,
-      ...data,
+    const recientes = (
+      solicitudesRecientes as {
+        id: string;
+        numero: string;
+        estado: string;
+        nombreProducto: string | null;
+        montoTotal: number | null;
+        createdAt: Date;
+        medico: { nombre: string };
+        paciente: { nombre: string };
+      }[]
+    ).map((s) => ({
+      id: s.id,
+      numero: s.numero,
+      estado: s.estado,
+      medicoNombre: s.medico.nombre,
+      pacienteNombre: s.paciente.nombre,
+      producto: s.nombreProducto || "—",
+      fecha: s.createdAt.toISOString(),
+      monto: s.montoTotal,
+    }));
+
+    const alertas = (
+      alertasRecientes as {
+        id: string;
+        type: string;
+        severity: string;
+        title: string;
+        message: string;
+        entityType: string | null;
+        entityId: string | null;
+        isRead: boolean;
+        createdAt: Date;
+      }[]
+    ).map((a) => ({
+      id: a.id,
+      type: a.type,
+      severity: a.severity,
+      title: a.title,
+      message: a.message,
+      entityType: a.entityType,
+      entityId: a.entityId,
+      isRead: a.isRead,
+      createdAt: a.createdAt.toISOString(),
     }));
 
     return NextResponse.json({
-      totalProducts,
-      totalInventoryValue,
-      lowStockCount: lowStockCount + outOfStockCount,
-      pendingOrders,
-      pendingTasks,
-      monthlyRevenue,
-      revenueChange: Math.round(revenueChange * 10) / 10,
-      topProducts,
-      recentAlerts,
-      salesTrend,
-      inventoryByLocation,
-    });
+      totalSolicitudes,
+      solicitudesPendientes,
+      solicitudesEnProceso,
+      solicitudesEntregadas,
+      medicosValidados,
+      pagosPendientes,
+      solicitudesPorEstado: estadosData,
+      solicitudesRecientes: recientes,
+      alertasRecientes: alertas,
+    } satisfies DashboardResponse);
   } catch (error) {
     console.error("Dashboard API error:", error);
-    return NextResponse.json({ totalProducts: 0, totalInventoryValue: 0, lowStockCount: 0, pendingOrders: 0, pendingTasks: 0, monthlyRevenue: 0, revenueChange: 0, topProducts: [], recentAlerts: [], salesTrend: [], inventoryByLocation: [] });
+    return NextResponse.json({
+      totalSolicitudes: 0,
+      solicitudesPendientes: 0,
+      solicitudesEnProceso: 0,
+      solicitudesEntregadas: 0,
+      medicosValidados: 0,
+      pagosPendientes: 0,
+      solicitudesPorEstado: [],
+      solicitudesRecientes: [],
+      alertasRecientes: [],
+    } satisfies DashboardResponse);
   }
+}
+
+interface DashboardResponse {
+  totalSolicitudes: number;
+  solicitudesPendientes: number;
+  solicitudesEnProceso: number;
+  solicitudesEntregadas: number;
+  medicosValidados: number;
+  pagosPendientes: number;
+  solicitudesPorEstado: { estado: string; count: number }[];
+  solicitudesRecientes: {
+    id: string;
+    numero: string;
+    estado: string;
+    medicoNombre: string;
+    pacienteNombre: string;
+    producto: string;
+    fecha: string;
+    monto: number | null;
+  }[];
+  alertasRecientes: {
+    id: string;
+    type: string;
+    severity: string;
+    title: string;
+    message: string;
+    entityType?: string | null;
+    entityId?: string | null;
+    isRead: boolean;
+    createdAt: string;
+  }[];
 }

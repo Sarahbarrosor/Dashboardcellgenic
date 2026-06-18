@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { SetupBanner } from "@/components/ui/setup-banner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cellgenic Operations Platform",
-  description: "Centralized operations & intelligence platform for Cellgenic",
+  title: "Cellgenic Argentina - Portal de Operaciones",
+  description: "Portal interno: órdenes, inventario y trazabilidad",
 };
 
 export default function RootLayout({
@@ -15,14 +14,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body>
         <div className="flex h-screen overflow-hidden">
           <Sidebar />
           <div className="flex flex-1 flex-col overflow-hidden">
             <Header />
             <main className="flex-1 overflow-y-auto p-6">
-              <SetupBanner />
               {children}
             </main>
           </div>

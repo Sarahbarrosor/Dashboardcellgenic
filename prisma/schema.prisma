@@ -8,330 +8,316 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ─── Users & Teams ───────────────────────────────────────────────
+// ─── Usuarios & Roles ───────────────────────────────────────────
 
 model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  role      String   @default("member") // admin, manager, member
+  role      String   @default("vendedor") // admin, vendedor, laboratorio, medico
   avatar    String?
-  locationId String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  location       Location?      @relation(fields: [locationId], references: [id])
-  assignedTasks  Task[]         @relation("TaskAssignee")
-  createdTasks   Task[]         @relation("TaskCreator")
-  orders         Order[]        @relation("OrderCreator")
-  orderComments  OrderComment[]
-  activityLogs   ActivityLog[]
-  requestedTransfers  Transfer[]        @relation("TransferRequester")
-  approvedTransfers   Transfer[]        @relation("TransferApprover")
-  receivedTransfers   Transfer[]        @relation("TransferReceiver")
-  transferComments    TransferComment[]
+  medico            Medico?
+  solicitudesCreadas Solicitud[]     @relation("SolicitudCreator")
+  validaciones       Solicitud[]     @relation("SolicitudValidator")
+  despachos          Fulfillment[]   @relation("FulfillmentResponsable")
+  evidencias         EvidenciaEntrega[] @relation("EvidenciaCreator")
+  activityLogs       ActivityLog[]
 }
 
-// ─── Locations ───────────────────────────────────────────────────
+// ─── Médicos / Clientes ─────────────────────────────────────────
 
-model Location {
-  id         String   @id @default(cuid())
-  name       String   @unique
-  code       String?  @unique // short code e.g. "MWH", "EAS"
-  type       String   @default("warehouse") // warehouse, distribution, retail, depot, office
-  address    String?
-  city       String?
-  country    String?  @default("USA")
-  managerName  String?
-  managerEmail String?
-  phone      String?
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+model Medico {
+  id                String   @id @default(cuid())
+  userId            String?  @unique
+  nombre            String
+  dni               String   @unique
+  matriculaNacional String?
+  matriculaProvincial String?
+  especialidad      String?
+  subespecialidad   String?
+  institucion       String?
+  cargo             String?
+  telefono          String?
+  whatsapp          String?
+  email             String   @unique
+  direccion         String?
+  ciudad            String?
+  provincia         String?
+  codigoPostal      String?
+  miembroSAMHRE     Boolean  @default(false)
+  numMiembroSAMHRE  String?
+  certificadoISSCA  Boolean  @default(false)
+  numCertificadoISSCA String?
+  workshopCellgenic Boolean  @default(false)
+  fechaWorkshop     DateTime?
+  otraFormacion     String?
+  estado            String   @default("pendiente") // pendiente, validado, rechazado
+  documentos        MedicoDocumento[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  users              User[]
-  outgoingTransfers  Transfer[] @relation("FromLocation")
-  incomingTransfers  Transfer[] @relation("ToLocation")
+  user        User?        @relation(fields: [userId], references: [id])
+  pacientes   Paciente[]
+  solicitudes Solicitud[]
 }
 
-// ─── Products & Inventory ────────────────────────────────────────
+model MedicoDocumento {
+  id        String   @id @default(cuid())
+  medicoId  String
+  tipo      String   // matricula, dni, certificado_issca, membresia_samhre, otro
+  nombre    String
+  fileUrl   String
+  createdAt DateTime @default(now())
 
-model Product {
+  medico Medico @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+}
+
+// ─── Pacientes ──────────────────────────────────────────────────
+
+model Paciente {
+  id                String    @id @default(cuid())
+  nombre            String
+  dni               String
+  fechaNacimiento   DateTime?
+  edad              Int?
+  sexo              String?   // masculino, femenino
+  peso              String?
+  altura            String?
+  telefono          String?
+  email             String?
+  medicoId          String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  medico      Medico      @relation(fields: [medicoId], references: [id])
+  solicitudes Solicitud[]
+}
+
+// ─── Solicitudes (Órdenes) ──────────────────────────────────────
+
+model Solicitud {
+  id                  String   @id @default(cuid())
+  numero              String   @unique
+  medicoId            String
+  pacienteId          String
+  estado              String   @default("pendiente")
+  // pendiente → validacion_documental → aprobado → en_preparacion → despachado → entregado → cerrado | rechazado
+
+  // Información clínica
+  diagnosticoPrincipal  String?
+  diagnosticoSecundario String?
+  tiempoEvolucion       String?
+  tratamientosPrevios   String?
+  objetivoTerapeutico   String?  // regeneracion_articular, dolor_cronico, etc.
+
+  // Producto solicitado
+  categoriaProducto     String?  // exosomas, celulas_madre, fibroblastos, peptidos, etc.
+  nombreProducto        String?
+  presentacion          String?
+  cantidadSolicitada    Int?
+  numeroViales          Int?
+  dosisRequerida        String?
+  concentracion         String?
+
+  // Administración
+  viaAdministracion     String?  // intravenosa, intraarticular, intradermica, etc.
+  cantidadAplicar       String?
+  numSesiones           Int?
+  fechaAplicacion       DateTime?
+  lugarAplicacion       String?
+
+  // Muestra autóloga
+  tipoMuestra           String?  // tejido_adiposo, foliculo_piloso, sangre, medula, otro
+  fechaExtraccion       DateTime?
+  horaExtraccion        String?
+  lugarExtraccion       String?
+  profesionalExtraccion String?
+  metodoTransporte      String?
+  temperaturaTransporte String?
+
+  // Entrega
+  nombreReceptor        String?
+  telefonoReceptor      String?
+  institucionEntrega    String?
+  direccionEntrega      String?
+  ciudadEntrega         String?
+  provinciaEntrega      String?
+  cpEntrega             String?
+  tipoEntrega           String?  // cadena_frio, temperatura_ambiente, retiro_laboratorio
+  fechaRequerida        DateTime?
+  horarioPreferido      String?
+
+  // Validación interna
+  medicoRegistrado      Boolean @default(false)
+  medicoValidado        Boolean @default(false)
+  samhreVerificado      Boolean @default(false)
+  capacitacionVerificada Boolean @default(false)
+  clienteAprobado       Boolean @default(false)
+  historiaClinicaRecibida Boolean @default(false)
+  consentimientoRecibido Boolean @default(false)
+  ordenMedicaRecibida    Boolean @default(false)
+  documentacionCompleta  Boolean @default(false)
+
+  // Pago
+  cotizacionNumero      String?
+  montoTotal            Float?
+  estadoPago            String?  @default("pendiente") // pendiente, pagado
+  fechaPago             DateTime?
+
+  // Control
+  validadoPorId         String?
+  fechaValidacion       DateTime?
+  observaciones         String?
+  createdById           String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  medico      Medico    @relation(fields: [medicoId], references: [id])
+  paciente    Paciente  @relation(fields: [pacienteId], references: [id])
+  createdBy   User      @relation("SolicitudCreator", fields: [createdById], references: [id])
+  validadoPor User?     @relation("SolicitudValidator", fields: [validadoPorId], references: [id])
+  documentos  SolicitudDocumento[]
+  fulfillment Fulfillment?
+  evidencia   EvidenciaEntrega?
+
+  @@index([estado])
+  @@index([medicoId])
+  @@index([createdAt])
+}
+
+model SolicitudDocumento {
+  id           String   @id @default(cuid())
+  solicitudId  String
+  tipo         String   // historia_clinica, consentimiento, orden_medica, laboratorio, imagenes, serologias, identidad, otro
+  nombre       String
+  fileUrl      String
+  createdAt    DateTime @default(now())
+
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+}
+
+// ─── Inventario ─────────────────────────────────────────────────
+
+model Producto {
   id            String   @id @default(cuid())
   sku           String   @unique
-  name          String
-  description   String?
-  category      String
-  brand         String   @default("Cellgenic")
-  unitPrice     Float
-  costPrice     Float
-  imageUrl      String?
-  katanaId      String?  // External Katana reference
-  quickbooksId  String?  // External QuickBooks reference
+  nombre        String
+  descripcion   String?
+  categoria     String   // exosomas, celulas_madre, fibroblastos, peptidos, foliculo_piloso, lisado_plaquetario, otro
+  presentacion  String?
+  precioUnitario Float
+  costoUnitario  Float
+  requiereFrio  Boolean  @default(true)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  inventory        Inventory[]
-  documents        ProductDocument[]
-  orderItems       OrderItem[]
-  salesRecords     SaleRecord[]
-  inventoryHistory InventoryHistory[]
+  inventario    Inventario[]
 }
 
-model Inventory {
-  id               String   @id @default(cuid())
-  productId        String
-  location         String   @default("Main Warehouse")
-  quantity         Int
-  minimumThreshold Int      @default(10)
-  reorderPoint     Int      @default(20)
-  reorderQuantity  Int      @default(50)
-  lastRestocked    DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model Inventario {
+  id               String    @id @default(cuid())
+  productoId       String
+  lote             String
+  cantidad         Int
+  fechaVencimiento DateTime?
+  ubicacion        String    @default("Laboratorio Principal")
+  tipoAlmacenamiento String  @default("frio") // frio, seco
+  umbralMinimo     Int       @default(5)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  producto Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, location])
+  @@unique([productoId, lote])
+  @@index([productoId])
+  @@index([lote])
 }
 
-model ProductDocument {
-  id          String   @id @default(cuid())
-  productId   String
-  name        String
-  type        String   // coa, first_party_test, third_party_test, brochure, catalog, msds, other
-  fileUrl     String
-  fileSize    Int?
-  uploadedBy  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// ─── Fulfillment ────────────────────────────────────────────────
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+model Fulfillment {
+  id              String    @id @default(cuid())
+  solicitudId     String    @unique
+  loteAsignado    String?
+  productoReservado String?
+  cantidad        Int?
+  fechaVencimiento DateTime?
+  ubicacion       String?
+  fechaPreparacion DateTime?
+  responsableId   String?
+  fechaDespacho   DateTime?
+  metodoEnvio     String?   // moto, andreani, transporte_especializado, retiro
+  tracking        String?
+  temperaturaEnvio String?
+  estado          String    @default("pendiente") // pendiente, preparando, listo, despachado, entregado
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  solicitud   Solicitud @relation(fields: [solicitudId], references: [id])
+  responsable User?     @relation("FulfillmentResponsable", fields: [responsableId], references: [id])
 }
 
-// ─── Sales Tracking ──────────────────────────────────────────────
+// ─── Evidencia de Entrega ───────────────────────────────────────
 
-model SaleRecord {
-  id          String   @id @default(cuid())
-  productId   String
-  quantity    Int
-  unitPrice   Float
-  totalAmount Float
-  channel     String   @default("direct") // direct, online, wholesale, distributor
-  customerName String?
-  saleDate    DateTime @default(now())
-  createdAt   DateTime @default(now())
+model EvidenciaEntrega {
+  id              String    @id @default(cuid())
+  solicitudId     String    @unique
+  nombreReceptor  String?
+  dniReceptor     String?
+  fechaHoraEntrega DateTime?
+  firmaUrl        String?
+  fotoUrl         String?
+  observaciones   String?
+  estado          String    @default("pendiente") // pendiente, confirmada
+  creadoPorId     String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  solicitud Solicitud @relation(fields: [solicitudId], references: [id])
+  creadoPor User      @relation("EvidenciaCreator", fields: [creadoPorId], references: [id])
 }
 
-// ─── Orders ──────────────────────────────────────────────────────
+// ─── Pagos ──────────────────────────────────────────────────────
 
-model Order {
-  id              String   @id @default(cuid())
-  orderNumber     String   @unique
-  type            String   @default("sales") // sales, purchase, internal
-  status          String   @default("pending") // pending, confirmed, processing, shipped, delivered, cancelled
-  customerName    String?
-  customerEmail   String?
-  supplierName    String?
-  totalAmount     Float    @default(0)
-  notes           String?
-  createdById     String
-  katanaOrderId   String?
-  quickbooksInvoiceId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  createdBy  User          @relation("OrderCreator", fields: [createdById], references: [id])
-  items      OrderItem[]
-  comments   OrderComment[]
+model Pago {
+  id            String   @id @default(cuid())
+  solicitudNum  String
+  monto         Float
+  metodo        String   // quickbooks, efectivo, transferencia
+  comprobante   String?
+  estado        String   @default("pendiente") // pendiente, confirmado
+  fechaPago     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
-model OrderItem {
-  id        String @id @default(cuid())
-  orderId   String
-  productId String
-  quantity  Int
-  unitPrice Float
-  total     Float
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
-}
-
-model OrderComment {
-  id        String   @id @default(cuid())
-  orderId   String
-  userId    String
-  content   String
-  createdAt DateTime @default(now())
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id])
-}
-
-// ─── Tasks & Workflows ──────────────────────────────────────────
-
-model Task {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  status      String    @default("todo") // todo, in_progress, review, done
-  priority    String    @default("medium") // low, medium, high, urgent
-  category    String    @default("general") // general, inventory, orders, shipping, quality, admin
-  dueDate     DateTime?
-  completedAt DateTime?
-  assigneeId  String?
-  createdById String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  assignee  User? @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  createdBy User  @relation("TaskCreator", fields: [createdById], references: [id])
-}
-
-// ─── Activity & Audit Log ────────────────────────────────────────
+// ─── Activity & Audit Log ───────────────────────────────────────
 
 model ActivityLog {
   id          String   @id @default(cuid())
   userId      String?
-  action      String   // created, updated, deleted, status_changed, commented, etc.
-  entityType  String   // order, task, product, inventory
+  action      String
+  entityType  String   // solicitud, medico, paciente, inventario, fulfillment, evidencia, pago
   entityId    String
   details     String?
   createdAt   DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
-}
 
-// ─── Integration Settings ────────────────────────────────────────
-
-model IntegrationConfig {
-  id          String   @id @default(cuid())
-  provider    String   @unique // katana, quickbooks
-  apiKey      String?
-  apiSecret   String?
-  baseUrl     String?
-  isActive    Boolean  @default(false)
-  lastSyncAt  DateTime?
-  settings    String?  // JSON string for additional settings
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ─── Transfers Between Locations ────────────────────────────────
-
-model Transfer {
-  id               String    @id @default(cuid())
-  transferNumber   String    @unique
-  fromLocationId   String
-  toLocationId     String
-  status           String    @default("requested")
-  // requested → pending approval at source location
-  // approved → source approved, preparing to ship
-  // in_transit → shipped, on the way
-  // received → delivered and confirmed at destination
-  // rejected → rejected by source location
-  // cancelled → cancelled by requester
-  priority         String    @default("normal") // low, normal, high, urgent
-  reason           String?   // why the transfer is needed
-  notes            String?
-  trackingNumber   String?
-  shippingMethod   String?   // courier, internal_fleet, pickup
-  estimatedArrival DateTime?
-  requestedById    String
-  approvedById     String?
-  receivedById     String?
-  requestedAt      DateTime  @default(now())
-  approvedAt       DateTime?
-  shippedAt        DateTime?
-  receivedAt       DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  fromLocation Location          @relation("FromLocation", fields: [fromLocationId], references: [id])
-  toLocation   Location          @relation("ToLocation", fields: [toLocationId], references: [id])
-  requestedBy  User              @relation("TransferRequester", fields: [requestedById], references: [id])
-  approvedBy   User?             @relation("TransferApprover", fields: [approvedById], references: [id])
-  receivedBy   User?             @relation("TransferReceiver", fields: [receivedById], references: [id])
-  items        TransferItem[]
-  comments     TransferComment[]
-}
-
-model TransferItem {
-  id                String @id @default(cuid())
-  transferId        String
-  productId         String
-  quantityRequested Int
-  quantityShipped   Int?
-  quantityReceived  Int?
-  unitCost          Float?
-  notes             String?
-
-  transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
-}
-
-model TransferComment {
-  id         String   @id @default(cuid())
-  transferId String
-  userId     String
-  content    String
-  createdAt  DateTime @default(now())
-
-  transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id])
-}
-
-// ─── Inventory History (Change Tracking) ────────────────────────
-
-model InventoryHistory {
-  id          String   @id @default(cuid())
-  productId   String
-  location    String
-  previousQty Int
-  newQty      Int
-  changeQty   Int
-  changeType  String   // sync, manual, transfer, sale
-  source      String   // katana, manual, transfer_in, transfer_out, system
-  syncId      String?
-  notes       String?
-  createdAt   DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@index([productId])
-  @@index([location])
+  @@index([entityType])
   @@index([createdAt])
-  @@index([syncId])
 }
 
-model SyncLog {
-  id          String   @id @default(cuid())
-  scope       String   // all, locations, products, inventory, sales_orders
-  status      String   // running, completed, failed
-  trigger     String   // cron, manual, webhook
-  productsCreated   Int @default(0)
-  productsUpdated   Int @default(0)
-  inventorySynced   Int @default(0)
-  inventoryChanged  Int @default(0)
-  locationsCreated  Int @default(0)
-  locationsUpdated  Int @default(0)
-  ordersCreated     Int @default(0)
-  ordersUpdated     Int @default(0)
-  errorMessage String?
-  startedAt   DateTime @default(now())
-  completedAt DateTime?
-
-  @@index([startedAt])
-}
-
-// ─── Alerts ──────────────────────────────────────────────────────
+// ─── Alertas ────────────────────────────────────────────────────
 
 model Alert {
   id          String   @id @default(cuid())
-  type        String   // low_stock, reorder, overdue_task, order_status, system
+  type        String   // stock_bajo, solicitud_pendiente, pago_pendiente, documento_faltante, vencimiento
   severity    String   @default("warning") // info, warning, critical
   title       String
   message     String

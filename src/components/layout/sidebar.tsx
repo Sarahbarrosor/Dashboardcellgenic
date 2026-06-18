@@ -5,15 +5,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  UserCheck,
+  Users,
+  FileText,
   Package,
-  Database,
-  TrendingUp,
-  CheckSquare,
-  ShoppingCart,
-  Settings,
+  CreditCard,
+  Truck,
+  ClipboardCheck,
   AlertTriangle,
-  ArrowRightLeft,
-  MapPin,
   Menu,
   X,
 } from "lucide-react";
@@ -21,15 +20,14 @@ import { useState } from "react";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Inventory", href: "/inventory", icon: Package },
-  { name: "Products", href: "/products", icon: Database },
-  { name: "Transfers", href: "/transfers", icon: ArrowRightLeft },
-  { name: "Locations", href: "/locations", icon: MapPin },
-  { name: "Sales & Insights", href: "/sales", icon: TrendingUp },
-  { name: "Tasks", href: "/tasks", icon: CheckSquare },
-  { name: "Orders", href: "/orders", icon: ShoppingCart },
-  { name: "Alerts", href: "/alerts", icon: AlertTriangle },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Médicos", href: "/medicos", icon: UserCheck },
+  { name: "Pacientes", href: "/pacientes", icon: Users },
+  { name: "Solicitudes", href: "/solicitudes", icon: FileText },
+  { name: "Inventario", href: "/inventario", icon: Package },
+  { name: "Pagos", href: "/pagos", icon: CreditCard },
+  { name: "Fulfillment", href: "/fulfillment", icon: Truck },
+  { name: "Evidencia", href: "/evidencia", icon: ClipboardCheck },
+  { name: "Alertas", href: "/alertas", icon: AlertTriangle },
 ];
 
 export function Sidebar() {
@@ -49,7 +47,7 @@ export function Sidebar() {
         </div>
         <div>
           <h1 className="text-sm font-bold text-white">Cellgenic</h1>
-          <p className="text-xs text-gray-400">Operations Platform</p>
+          <p className="text-xs text-gray-400">Argentina</p>
         </div>
         <button
           onClick={() => setMobileOpen(false)}
@@ -89,7 +87,7 @@ export function Sidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">Sarah Barros</p>
-            <p className="text-xs text-gray-400 truncate">Admin</p>
+            <p className="text-xs text-gray-400 truncate">Admin Cellgenic</p>
           </div>
         </div>
       </div>
@@ -98,7 +96,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button */}
       <button
         onClick={() => setMobileOpen(true)}
         className="fixed top-4 left-4 z-50 lg:hidden rounded-lg bg-gray-900 p-2 text-white shadow-lg"
@@ -106,7 +103,6 @@ export function Sidebar() {
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -114,7 +110,6 @@ export function Sidebar() {
         />
       )}
 
-      {/* Mobile sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col bg-gray-900 transition-transform duration-200 lg:hidden",
@@ -124,7 +119,6 @@ export function Sidebar() {
         {navContent}
       </aside>
 
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-[260px] flex-col bg-gray-900 flex-shrink-0">
         {navContent}
       </aside>

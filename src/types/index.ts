@@ -1,23 +1,24 @@
 export interface DashboardMetrics {
-  totalProducts: number;
-  totalInventoryValue: number;
-  lowStockCount: number;
-  pendingOrders: number;
-  pendingTasks: number;
-  monthlyRevenue: number;
-  revenueChange: number;
-  topProducts: TopProduct[];
-  recentAlerts: AlertData[];
-  salesTrend: SalesTrendPoint[];
-  inventoryByLocation: LocationInventory[];
+  totalSolicitudes: number;
+  solicitudesPendientes: number;
+  solicitudesEnProceso: number;
+  solicitudesEntregadas: number;
+  medicosValidados: number;
+  pagosPendientes: number;
+  solicitudesPorEstado: { estado: string; count: number }[];
+  solicitudesRecientes: SolicitudResumen[];
+  alertasRecientes: AlertData[];
 }
 
-export interface TopProduct {
+export interface SolicitudResumen {
   id: string;
-  name: string;
-  sku: string;
-  totalSold: number;
-  revenue: number;
+  numero: string;
+  estado: string;
+  medicoNombre: string;
+  pacienteNombre: string;
+  producto: string;
+  fecha: string;
+  monto: number | null;
 }
 
 export interface AlertData {
@@ -32,106 +33,145 @@ export interface AlertData {
   createdAt: string;
 }
 
-export interface SalesTrendPoint {
-  date: string;
-  revenue: number;
-  orders: number;
-}
-
-export interface LocationInventory {
-  location: string;
-  totalItems: number;
-  totalValue: number;
-  lowStockItems: number;
-}
-
-export interface InventoryItem {
+export interface MedicoDetalle {
   id: string;
-  productId: string;
-  product: {
-    id: string;
-    name: string;
-    sku: string;
-    category: string;
-    unitPrice: number;
-    costPrice: number;
+  nombre: string;
+  dni: string;
+  matriculaNacional: string | null;
+  matriculaProvincial: string | null;
+  especialidad: string | null;
+  institucion: string | null;
+  telefono: string | null;
+  whatsapp: string | null;
+  email: string;
+  ciudad: string | null;
+  provincia: string | null;
+  miembroSAMHRE: boolean;
+  certificadoISSCA: boolean;
+  workshopCellgenic: boolean;
+  estado: string;
+  createdAt: string;
+  _count: {
+    solicitudes: number;
+    pacientes: number;
   };
-  location: string;
-  quantity: number;
-  minimumThreshold: number;
-  reorderPoint: number;
-  reorderQuantity: number;
-  lastRestocked: string | null;
-  status: "ok" | "low" | "critical" | "out_of_stock";
 }
 
-export interface ProductWithDetails {
+export interface PacienteDetalle {
   id: string;
-  sku: string;
-  name: string;
-  description: string | null;
-  category: string;
-  brand: string;
-  unitPrice: number;
-  costPrice: number;
-  imageUrl: string | null;
-  isActive: boolean;
+  nombre: string;
+  dni: string;
+  fechaNacimiento: string | null;
+  edad: number | null;
+  sexo: string | null;
+  telefono: string | null;
+  email: string | null;
+  medicoId: string;
+  medico: { nombre: string };
   createdAt: string;
-  documents: ProductDocumentData[];
-  inventory: {
-    location: string;
-    quantity: number;
-  }[];
+  _count: {
+    solicitudes: number;
+  };
 }
 
-export interface ProductDocumentData {
+export interface SolicitudDetalle {
   id: string;
-  name: string;
-  type: string;
-  fileUrl: string;
-  fileSize: number | null;
-  uploadedBy: string | null;
-  createdAt: string;
-}
-
-export interface OrderWithDetails {
-  id: string;
-  orderNumber: string;
-  type: string;
-  status: string;
-  customerName: string | null;
-  customerEmail: string | null;
-  supplierName: string | null;
-  totalAmount: number;
-  notes: string | null;
+  numero: string;
+  estado: string;
+  estadoPago: string | null;
+  medicoId: string;
+  pacienteId: string;
+  diagnosticoPrincipal: string | null;
+  objetivoTerapeutico: string | null;
+  categoriaProducto: string | null;
+  nombreProducto: string | null;
+  cantidadSolicitada: number | null;
+  viaAdministracion: string | null;
+  fechaAplicacion: string | null;
+  tipoEntrega: string | null;
+  montoTotal: number | null;
   createdAt: string;
   updatedAt: string;
-  createdBy: { id: string; name: string };
-  items: {
-    id: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-    product: { id: string; name: string; sku: string };
-  }[];
-  comments: {
-    id: string;
-    content: string;
-    createdAt: string;
-    user: { id: string; name: string };
-  }[];
+  medico: { nombre: string; especialidad: string | null };
+  paciente: { nombre: string; dni: string };
+  createdBy: { name: string };
+  documentos: { id: string; tipo: string; nombre: string }[];
+  fulfillment: {
+    estado: string;
+    loteAsignado: string | null;
+    metodoEnvio: string | null;
+    tracking: string | null;
+  } | null;
+  evidencia: {
+    estado: string;
+    nombreReceptor: string | null;
+    fechaHoraEntrega: string | null;
+  } | null;
+
+  // Checklists
+  medicoRegistrado: boolean;
+  medicoValidado: boolean;
+  historiaClinicaRecibida: boolean;
+  consentimientoRecibido: boolean;
+  ordenMedicaRecibida: boolean;
+  documentacionCompleta: boolean;
 }
 
-export interface TaskWithDetails {
+export interface InventarioItem {
   id: string;
-  title: string;
-  description: string | null;
-  status: string;
-  priority: string;
-  category: string;
-  dueDate: string | null;
-  completedAt: string | null;
-  createdAt: string;
-  assignee: { id: string; name: string } | null;
-  createdBy: { id: string; name: string };
+  productoId: string;
+  producto: {
+    id: string;
+    nombre: string;
+    sku: string;
+    categoria: string;
+    precioUnitario: number;
+    requiereFrio: boolean;
+  };
+  lote: string;
+  cantidad: number;
+  fechaVencimiento: string | null;
+  ubicacion: string;
+  tipoAlmacenamiento: string;
+  umbralMinimo: number;
+  status: "ok" | "bajo" | "critico" | "agotado";
+}
+
+export interface FulfillmentDetalle {
+  id: string;
+  solicitudId: string;
+  loteAsignado: string | null;
+  productoReservado: string | null;
+  cantidad: number | null;
+  fechaPreparacion: string | null;
+  fechaDespacho: string | null;
+  metodoEnvio: string | null;
+  tracking: string | null;
+  temperaturaEnvio: string | null;
+  estado: string;
+  solicitud: {
+    numero: string;
+    nombreProducto: string | null;
+    medico: { nombre: string };
+    paciente: { nombre: string };
+  };
+  responsable: { name: string } | null;
+}
+
+export interface EvidenciaDetalle {
+  id: string;
+  solicitudId: string;
+  nombreReceptor: string | null;
+  dniReceptor: string | null;
+  fechaHoraEntrega: string | null;
+  firmaUrl: string | null;
+  fotoUrl: string | null;
+  observaciones: string | null;
+  estado: string;
+  solicitud: {
+    numero: string;
+    medico: { nombre: string };
+    paciente: { nombre: string };
+  };
+  creadoPor: { name: string };
 }
