@@ -16,6 +16,8 @@ import {
   MapPin,
   Menu,
   X,
+  Store,
+  ExternalLink,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -80,6 +82,18 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        <a
+          href="/portal"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setMobileOpen(false)}
+          className="mt-2 flex items-center gap-3 rounded-lg border border-gray-800 px-3 py-2.5 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+        >
+          <Store className="h-5 w-5 flex-shrink-0" />
+          Provider Portal
+          <ExternalLink className="ml-auto h-4 w-4 flex-shrink-0 opacity-60" />
+        </a>
       </nav>
 
       <div className="border-t border-gray-800 px-4 py-4">
