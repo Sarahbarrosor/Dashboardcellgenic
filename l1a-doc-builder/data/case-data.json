@@ -1,0 +1,450 @@
+{
+  "meta": {
+    "caseName": "L-1A New Office — Sarah Cristina Barroso Russian",
+    "classification": "L-1A (executive/managerial capacity), new office modality, 8 C.F.R. 214.2(l)(3)(v)",
+    "filingDate": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    },
+    "schemaVersion": 1
+  },
+  "beneficiary": {
+    "fullName": {
+      "value": "Sarah Cristina Barroso Russian",
+      "status": "confirmed",
+      "source": "Pasaporte"
+    },
+    "dob": {
+      "value": "1998-11-27",
+      "status": "confirmed",
+      "source": "Pasaporte"
+    },
+    "nationality": {
+      "value": "Venezuela",
+      "status": "confirmed",
+      "source": "Pasaporte"
+    },
+    "mexicanStatus": {
+      "value": "Visa de trabajo patrocinada por la empleadora extranjera",
+      "status": "declared",
+      "source": null
+    },
+    "employmentStartDate": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    },
+    "currentTitle": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    },
+    "currentSalary": {
+      "value": null,
+      "currency": null,
+      "status": "missing",
+      "source": null
+    },
+    "workLocation": {
+      "value": "Cancún, Quintana Roo, México",
+      "status": "declared",
+      "source": null
+    },
+    "proposedTitle": {
+      "value": "Chief Operating Officer & Managing Director of U.S. Operations",
+      "status": "declared",
+      "source": null
+    },
+    "proposedSalary": {
+      "value": null,
+      "currency": null,
+      "status": "missing",
+      "source": null
+    },
+    "education": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    },
+    "imssRegistered": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    },
+    "mexicanPassport": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    }
+  },
+  "entities": {
+    "petitioner": {
+      "key": "petitioner",
+      "legalName": {
+        "value": "Global Stem Cells Group, Inc.",
+        "status": "confirmed",
+        "source": "Registro de Florida"
+      },
+      "shortName": "GSCG",
+      "role": "Peticionaria (I-129)",
+      "state": {
+        "value": "Florida",
+        "status": "declared",
+        "source": null
+      },
+      "incDate": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "ein": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "address": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "phone": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "locked": false
+    },
+    "foreignEmployer": {
+      "key": "foreignEmployer",
+      "legalName": {
+        "value": "Cellular Hope Institute, S.A. de C.V.",
+        "status": "confirmed",
+        "source": "Declaración de la beneficiaria — pendiente acta constitutiva"
+      },
+      "shortName": "CHI",
+      "role": "EMPLEADORA EXTRANJERA",
+      "locked": true,
+      "city": {
+        "value": "Cancún, Quintana Roo, México",
+        "status": "declared",
+        "source": null
+      },
+      "address": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "phone": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "incDate": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "rfc": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "actaConstitutiva": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "notario": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "cofepris": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "employeeCount": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "annualRevenue": {
+        "value": null,
+        "currency": null,
+        "status": "missing",
+        "source": null
+      }
+    },
+    "parent": {
+      "key": "parent",
+      "legalName": {
+        "value": "Regenerative Medical Technology Group, Inc.",
+        "status": "confirmed",
+        "source": "Filings SEC"
+      },
+      "shortName": "RMTG",
+      "role": "Matriz pública",
+      "ticker": "RMTG",
+      "state": {
+        "value": "Nevada",
+        "status": "declared",
+        "source": null
+      },
+      "incDate": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "address": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "phone": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "locked": false
+    },
+    "cellgenicLLC": {
+      "key": "cellgenicLLC",
+      "legalName": {
+        "value": "Cellgenic, LLC",
+        "status": "confirmed",
+        "source": "Articles of Organization"
+      },
+      "shortName": "Cellgenic LLC",
+      "role": "Entidad secundaria (NO es la empleadora)",
+      "state": {
+        "value": "Florida",
+        "status": "declared",
+        "source": null
+      },
+      "incDate": {
+        "value": "2024-07-25",
+        "status": "confirmed",
+        "source": "Articles of Organization"
+      },
+      "operatingAgreementEffectiveDate": {
+        "value": "2024-01-01",
+        "status": "declared",
+        "source": "Operating Agreement (DEFECTUOSO — anterior a la constitución)"
+      },
+      "address": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "phone": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "locked": false
+    },
+    "issca": {
+      "key": "issca",
+      "legalName": {
+        "value": "ISSCA",
+        "status": "declared",
+        "source": null
+      },
+      "shortName": "ISSCA",
+      "role": "Unidad de negocio (US) — certificación, congresos, educación",
+      "state": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "incDate": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "address": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "phone": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "locked": false
+    },
+    "stemCellTraining": {
+      "key": "stemCellTraining",
+      "legalName": {
+        "value": "Stem Cell Training, Inc.",
+        "status": "declared",
+        "source": null
+      },
+      "shortName": "SCT",
+      "role": "Entidad relacionada — relevante solo si la clínica de Plantation opera bajo esta entidad",
+      "state": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "incDate": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "address": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "phone": {
+        "value": null,
+        "status": "missing",
+        "source": null
+      },
+      "locked": false
+    }
+  },
+  "people": {
+    "signerUS": {
+      "name": {
+        "value": "Benito Novas",
+        "status": "declared",
+        "source": null
+      },
+      "title": {
+        "value": "Founder & Chief Executive Officer",
+        "status": "declared",
+        "source": null
+      },
+      "entityKey": "petitioner"
+    },
+    "signerForeign": {
+      "name": {
+        "value": "Benito Novas",
+        "status": "declared",
+        "source": null
+      },
+      "title": {
+        "value": "Founder & Chief Executive Officer",
+        "status": "declared",
+        "source": null
+      },
+      "entityKey": "foreignEmployer"
+    }
+  },
+  "ownershipChain": [
+    {
+      "id": "own-1",
+      "owner": "Regenerative Medical Technology Group, Inc.",
+      "owned": "Global Stem Cells Group, Inc.",
+      "percent": 100,
+      "proof": "Certificado accionario 2021-08-21 + filings SEC",
+      "status": "declared"
+    },
+    {
+      "id": "own-2",
+      "owner": "Global Stem Cells Group, Inc.",
+      "owned": "Cellular Hope Institute, S.A. de C.V.",
+      "percent": null,
+      "proof": "Libro de accionistas (PENDIENTE)",
+      "status": "missing"
+    }
+  ],
+  "subordinatesForeign": [],
+  "subordinatesUS": [],
+  "sarahDuties": [],
+  "proposedUSDuties": [],
+  "usOffice": {
+    "address": {
+      "value": "9633 W Broward Blvd, Suite 1, Plantation, FL",
+      "status": "declared",
+      "source": null
+    },
+    "leaseSigned": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    },
+    "leaseHolder": {
+      "value": "Global Stem Cells Group, Inc.",
+      "status": "declared",
+      "source": null
+    },
+    "squareFeet": {
+      "value": null,
+      "status": "missing",
+      "source": null
+    },
+    "monthlyRent": {
+      "value": null,
+      "currency": null,
+      "status": "missing",
+      "source": null
+    }
+  },
+  "businessPlan": {
+    "hiringPlan12Months": [],
+    "revenueProjections": [],
+    "startupCapital": {
+      "value": null,
+      "currency": null,
+      "status": "missing",
+      "source": null
+    }
+  },
+  "theories": [
+    {
+      "id": "t-l1a-exec",
+      "name": "L-1A ejecutiva",
+      "state": "Teoría principal",
+      "supportingFacts": [
+        "Sarah figura como CEO de una unidad",
+        "Reporta al founder",
+        "Aparenta autonomía"
+      ],
+      "supportingDocs": [],
+      "weakeningFacts": [
+        "Subordinados directos aún no documentados"
+      ],
+      "missingEvidence": [
+        "CVs, títulos y descripciones de puesto de los subordinados directos en CHI"
+      ]
+    },
+    {
+      "id": "t-l1a-mgr",
+      "name": "L-1A gerencial",
+      "state": "Respaldo",
+      "supportingFacts": [],
+      "supportingDocs": [],
+      "weakeningFacts": [],
+      "missingEvidence": [
+        "Prueba de que los subordinados son profesionales (títulos)"
+      ]
+    },
+    {
+      "id": "t-l1a-func",
+      "name": "L-1A functional manager",
+      "state": "Alternativa si los subordinados directos resultan pocos o no profesionales",
+      "supportingFacts": [],
+      "supportingDocs": [],
+      "weakeningFacts": [],
+      "missingEvidence": []
+    },
+    {
+      "id": "t-l1b",
+      "name": "L-1B conocimiento especializado",
+      "state": "Última opción, no descartada",
+      "supportingFacts": [],
+      "supportingDocs": [],
+      "weakeningFacts": [],
+      "missingEvidence": []
+    }
+  ],
+  "evidenceInventory": [],
+  "missingEvidence": [],
+  "decisionLog": []
+}
